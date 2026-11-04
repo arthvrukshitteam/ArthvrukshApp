@@ -24,6 +24,7 @@ import {
   FundDetailErrorView, FundDetailSkeleton, FundDetailBanners,
   StartDateFilterRow, HorizonChipRow, PredecessorToggleRow, shortErr,
   AddToPortfolioButton, PortfolioSelectionBar, AmcHistorySection,
+  RecomputingNotice, initialBasis, useLatestRequest, type DetailRouteParams,
 } from "@/src/components/FundDetailShared";
 
 const WINDOWS_PAGE_SIZE = 30;
@@ -38,20 +39,17 @@ function SipFundDetailScreen() {
   // `horizon` is set when navigating from the Home Universe screen.
   // It is absent when navigating from the Search / Recent screen.
   // `since2010`/`mgmt`/`contDate` mirror whatever the Home screen's 2010 and
-  // Mgmt toggles were showing on the card that was tapped — without these,
+  // Management toggles were showing on the card that was tapped — without these,
   // this screen used to always reset to full-history/full-predecessor data,
   // silently disagreeing with the card the user just came from.
-  const { code, horizon: horizonParam, since2010: since2010Param, mgmt: mgmtParam, contDate: contDateParam } = useLocalSearchParams<{
-    code: string;
-    horizon?: string;
-    since2010?: string;
-    mgmt?: string;
-    contDate?: string;
-  }>();
+  const params = useLocalSearchParams<DetailRouteParams>();
+  const { code, horizon: horizonParam, since2010: since2010Param, mgmt: mgmtParam, contDate: contDateParam } = params;
   const router = useRouter();
   const { colors, type, tierColor } = useTheme();
   const styles = useMemo(() => makeStyles(colors, type), [colors, type]);
-  const { selectedFunds, toggleFund, isSelected, setToggleContext } = useProposalDraft();
+  const { selectedFunds, toggleFund, updateFund, isSelected, setToggleContext } = useProposalDraft();
+  const basis = useMemo(() => initialBasis(params), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const latest = useLatestRequest();
 
   const schemeCode = Number(code);
 
@@ -63,40 +61,32 @@ function SipFundDetailScreen() {
     return Number.isFinite(n) ? n : null;
   }, [horizonParam]);
 
-  // Translate Home's (since2010, mgmt, contDate) into this screen's own
-  // (startDate, includePredecessor) controls. `contDate` is only ever sent
-  // when the Mgmt toggle actually changed THIS fund's numbers on Home (see
-  // home.tsx's fundDetailHref) — its presence alone means "use the
-  // continuity/break-date view", matching fqs_refresh.py's own continuity
-  // pass: own-code-only history (includePredecessor=false) truncated at that
-  // date. Since-2010 (no mgmt break) just forces startDate to 2010-01-01,
-  // identical to how fqs_by_horizon_2010 itself is computed.
-  const homeToggleNote = mgmtParam === "1" && contDateParam
-    ? `Separate management periods — showing history from ${contDateParam} onward, matching your Home screen selection.`
-    : since2010Param === "1"
-      ? "Since 2010 — showing history from 2010-01-01 onward, matching your Home screen selection."
-      : null;
-
   const [data, setData] = useState<FundAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [headerRefreshing, setHeaderRefreshing] = useState(false);
+  const [recomputing, setRecomputing] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
   const [activeHorizon, setActiveHorizon] = useState<number | null>(null);
-  // null = full history (matches nightly FQS batch — no startDate filter).
-  // Users can narrow via the date picker but the default aligns with home screen.
-  // Initialized from Home's toggle state (see homeToggleNote above) so the
-  // first render already matches the card that was tapped.
-  const [startDate, setStartDate] = useState<string | null>(() =>
-    mgmtParam === "1" && contDateParam ? contDateParam : since2010Param === "1" ? "2010-01-01" : null,
-  );
+  // null = full history. Seeded from whatever Home was showing on the tapped
+  // card (see initialBasis) so the first render already matches it.
+  const [startDate, setStartDate] = useState<string | null>(basis.startDate);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  // Old vs new management toggle (task: fund changed hands — pick which era's
-  // NAVs feed the analysis). True = full stitched history, the long-standing
-  // default; a fund with no verified predecessor never shows this control at
-  // all (PredecessorToggleRow renders null when predecessor_available is empty).
-  // Defaults to false (new-management-only) when Home's Mgmt toggle applied.
-  const [includePredecessor, setIncludePredecessor] = useState(() => !(mgmtParam === "1" && contDateParam));
+  // False = this code's own NAVs only ("new management only").
+  const [includePredecessor, setIncludePredecessor] = useState(basis.includePredecessor);
+  // The Home-context note is only true while the basis it describes is still
+  // the one on screen; once the advisor changes or clears the filter it
+  // would be describing data that is no longer shown.
+  const homeToggleNote =
+    basis.note && startDate === basis.startDate && includePredecessor === basis.includePredecessor
+      ? basis.note
+      : null;
+
+  // A fund already in the draft portfolio follows the filter on screen, so
+  // "Build Proposal" scores it on exactly what the advisor is looking at.
+  useEffect(() => {
+    updateFund(schemeCode, { start_date: startDate, include_predecessor: includePredecessor, explicit_basis: true });
+  }, [schemeCode, startDate, includePredecessor, updateFund]);
 
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showBanner = useCallback((msg: string) => {
@@ -147,6 +137,12 @@ function SipFundDetailScreen() {
     async (opts?: { refresh?: boolean; silent?: boolean }) => {
       const predecessorToggled = prevIncludePredecessorRef.current !== includePredecessor;
       prevIncludePredecessorRef.current = includePredecessor;
+      // Each filter change fires a new request. A filtered run is computed
+      // live (slow) while "since inception" is served from cache (fast), so
+      // without this guard clearing a filter quickly let the slower filtered
+      // response land last and put the old filter's numbers back on screen.
+      const req = latest.next();
+      setRecomputing(true);
       try {
         if (!opts?.silent) setError(null);
         const d = await api.analyze(schemeCode, {
@@ -154,18 +150,22 @@ function SipFundDetailScreen() {
           refresh: opts?.refresh || predecessorToggled,
           includePredecessor,
         });
+        if (!latest.isLatest(req)) return;
         setData(d);
         setActiveHorizon((cur) => pickHorizon(d, cur));
       } catch (e: any) {
+        if (!latest.isLatest(req)) return;
         const msg = String(e?.message ?? e);
         if (opts?.silent) {
           showBanner(`Refresh failed — showing cached data. ${shortErr(msg)}`);
         } else {
           setError(msg);
         }
+      } finally {
+        if (latest.isLatest(req)) setRecomputing(false);
       }
     },
-    [schemeCode, startDate, includePredecessor, showBanner, pickHorizon],
+    [schemeCode, startDate, includePredecessor, showBanner, pickHorizon, latest],
   );
 
   useEffect(() => { load(); }, [load]);
@@ -299,13 +299,18 @@ function SipFundDetailScreen() {
 
         <AddToPortfolioButton
           selected={isSelected(schemeCode)}
-          onToggle={() => toggleFund({ scheme_code: schemeCode, scheme_name: data.scheme_name })}
+          startDate={startDate}
+          onToggle={() => toggleFund({
+            scheme_code: schemeCode, scheme_name: data.scheme_name,
+            start_date: startDate, include_predecessor: includePredecessor, explicit_basis: true,
+          })}
         />
 
         <ViewModeToggle />
 
         <StartDateFilterRow
           startDate={startDate}
+          busy={recomputing}
           onOpen={() => setDatePickerOpen(true)}
           onClear={() => setStartDate(null)}
         />
@@ -316,7 +321,11 @@ function SipFundDetailScreen() {
           predecessorAvailable={data.predecessor_available ?? []}
         />
 
-        <AmcHistorySection schemeCode={schemeCode} onSelectYear={setStartDate} />
+        <AmcHistorySection
+          schemeCode={schemeCode}
+          activeStart={startDate}
+          onSelectPeriod={(d) => { setStartDate(d); setIncludePredecessor(true); }}
+        />
 
         <HorizonChipRow
           availableHorizons={data.available_horizons}
@@ -325,6 +334,8 @@ function SipFundDetailScreen() {
           getFqs={(h) => data.horizons.find((x) => x.horizon === h)?.fqs}
           contextHorizon={contextHorizon}
         />
+
+        <RecomputingNotice visible={recomputing} startDate={startDate} />
 
         {horizon && <HorizonView h={horizon} />}
       </ScrollView>
@@ -354,42 +365,35 @@ function SipFundDetailScreen() {
 function LumpsumFundDetailScreen() {
   // since2010/mgmt/contDate mirror Home's toggle state for this fund — see
   // the SIP screen above for the full rationale (same fix, same reasoning).
-  const { code, since2010: since2010Param, mgmt: mgmtParam, contDate: contDateParam } = useLocalSearchParams<{
-    code: string;
-    since2010?: string;
-    mgmt?: string;
-    contDate?: string;
-  }>();
+  const params = useLocalSearchParams<DetailRouteParams>();
+  const { code, since2010: since2010Param, mgmt: mgmtParam, contDate: contDateParam } = params;
   const router = useRouter();
   const { colors, type, tierColor } = useTheme();
   const styles = useMemo(() => makeStyles(colors, type), [colors, type]);
-  const { selectedFunds, toggleFund, isSelected, setToggleContext } = useProposalDraft();
+  const { selectedFunds, toggleFund, updateFund, isSelected, setToggleContext } = useProposalDraft();
+  const basis = useMemo(() => initialBasis(params), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const latest = useLatestRequest();
 
   const schemeCode = Number(code);
-
-  const homeToggleNote = mgmtParam === "1" && contDateParam
-    ? `Separate management periods — showing history from ${contDateParam} onward, matching your Home screen selection.`
-    : since2010Param === "1"
-      ? "Since 2010 — showing history from 2010-01-01 onward, matching your Home screen selection."
-      : null;
 
   const [data, setData] = useState<LumpsumFundAnalysis | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [headerRefreshing, setHeaderRefreshing] = useState(false);
+  const [recomputing, setRecomputing] = useState(false);
   const [banner, setBanner] = useState<string | null>(null);
   const [activeHorizon, setActiveHorizon] = useState<number | null>(null);
-  // null = full history (matches nightly FQS batch — no startDate filter).
-  // Users can narrow via the date picker but the default aligns with home screen.
-  // Initialized from Home's toggle state so the first render already matches
-  // the card that was tapped.
-  const [startDate, setStartDate] = useState<string | null>(() =>
-    mgmtParam === "1" && contDateParam ? contDateParam : since2010Param === "1" ? "2010-01-01" : null,
-  );
+  const [startDate, setStartDate] = useState<string | null>(basis.startDate);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  // Old vs new management toggle — same control as the SIP screen. Defaults
-  // to false (new-management-only) when Home's Mgmt toggle applied.
-  const [includePredecessor, setIncludePredecessor] = useState(() => !(mgmtParam === "1" && contDateParam));
+  const [includePredecessor, setIncludePredecessor] = useState(basis.includePredecessor);
+  const homeToggleNote =
+    basis.note && startDate === basis.startDate && includePredecessor === basis.includePredecessor
+      ? basis.note
+      : null;
+
+  useEffect(() => {
+    updateFund(schemeCode, { start_date: startDate, include_predecessor: includePredecessor, explicit_basis: true });
+  }, [schemeCode, startDate, includePredecessor, updateFund]);
 
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showBanner = useCallback((msg: string) => {
@@ -409,6 +413,8 @@ function LumpsumFundDetailScreen() {
     async (opts?: { refresh?: boolean; silent?: boolean }) => {
       const predecessorToggled = prevIncludePredecessorRef.current !== includePredecessor;
       prevIncludePredecessorRef.current = includePredecessor;
+      const req = latest.next(); // see the SIP screen: drop out-of-order responses
+      setRecomputing(true);
       try {
         if (!opts?.silent) setError(null);
         const d = await api.analyzeLumpsum(schemeCode, {
@@ -416,6 +422,7 @@ function LumpsumFundDetailScreen() {
           refresh: opts?.refresh || predecessorToggled,
           includePredecessor,
         });
+        if (!latest.isLatest(req)) return;
         setData(d);
         setActiveHorizon((cur) => {
           if (cur != null && d.available_horizons.includes(cur)) return cur;
@@ -423,12 +430,15 @@ function LumpsumFundDetailScreen() {
           return d.available_horizons[d.available_horizons.length - 1] ?? null;
         });
       } catch (e: any) {
+        if (!latest.isLatest(req)) return;
         const msg = String(e?.message ?? e);
         if (opts?.silent) showBanner(`Refresh failed. ${shortErr(msg)}`);
         else setError(msg);
+      } finally {
+        if (latest.isLatest(req)) setRecomputing(false);
       }
     },
-    [schemeCode, startDate, includePredecessor, showBanner],
+    [schemeCode, startDate, includePredecessor, showBanner, latest],
   );
 
   useEffect(() => { load(); }, [load]);
@@ -548,13 +558,18 @@ function LumpsumFundDetailScreen() {
 
         <AddToPortfolioButton
           selected={isSelected(schemeCode)}
-          onToggle={() => toggleFund({ scheme_code: schemeCode, scheme_name: data.scheme_name })}
+          startDate={startDate}
+          onToggle={() => toggleFund({
+            scheme_code: schemeCode, scheme_name: data.scheme_name,
+            start_date: startDate, include_predecessor: includePredecessor, explicit_basis: true,
+          })}
         />
 
         <ViewModeToggle />
 
         <StartDateFilterRow
           startDate={startDate}
+          busy={recomputing}
           onOpen={() => setDatePickerOpen(true)}
           onClear={() => setStartDate(null)}
           label="Start date:"
@@ -566,7 +581,11 @@ function LumpsumFundDetailScreen() {
           predecessorAvailable={data.predecessor_available ?? []}
         />
 
-        <AmcHistorySection schemeCode={schemeCode} onSelectYear={setStartDate} />
+        <AmcHistorySection
+          schemeCode={schemeCode}
+          activeStart={startDate}
+          onSelectPeriod={(d) => { setStartDate(d); setIncludePredecessor(true); }}
+        />
 
         <HorizonChipRow
           availableHorizons={data.available_horizons}
@@ -574,6 +593,8 @@ function LumpsumFundDetailScreen() {
           onSelect={setActiveHorizon}
           getFqs={(h) => data.horizons.find((x) => x.horizon === h)?.fqs}
         />
+
+        <RecomputingNotice visible={recomputing} startDate={startDate} />
 
         {lHorizon && <LumpsumHorizonView h={lHorizon} />}
       </ScrollView>

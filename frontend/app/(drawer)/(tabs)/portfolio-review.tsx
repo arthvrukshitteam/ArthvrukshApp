@@ -27,7 +27,7 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
-  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Platform,
+  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, Platform, Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as DocumentPicker from "expo-document-picker";
@@ -35,9 +35,12 @@ import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import {
   FileSpreadsheet, Upload, XCircle, AlertTriangle,
-  Download, RotateCcw, ListChecks,
+  Download, RotateCcw, ListChecks, CheckCircle2, TrendingUp,
 } from "lucide-react-native";
-import { api, type BulkAnalysisUploadResponse, type BulkAnalysisJobStatus } from "@/src/api";
+import { api, type BulkAnalysisUploadResponse, type BulkAnalysisJobStatus, type BulkBenchmark } from "@/src/api";
+import { countLabel } from "@/src/utils/format";
+import { DrawerMenuButton } from "@/src/components/DrawerMenuButton";
+import { fmtXirr } from "@/src/utils/xirr";
 import { useTheme } from "@/src/ThemeProvider";
 import { radii, space, type ThemeColors, type ThemeType } from "@/src/theme";
 
@@ -155,6 +158,7 @@ export default function PortfolioReviewScreen() {
   const [status, setStatus] = useState<BulkAnalysisJobStatus | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [includeNifty50, setIncludeNifty50] = useState(true);
 
   // Polling is a CHAINED TIMEOUT, not setInterval: on a slow connection a
   // fixed interval fires again while the previous /status request is still in
@@ -263,7 +267,7 @@ export default function PortfolioReviewScreen() {
     setStarting(true);
     setError(null);
     try {
-      await api.bulkAnalysisProcess(upload.job_id);
+      await api.bulkAnalysisProcess(upload.job_id, { includeNifty50 });
       // First status read right away, then poll — real progress only,
       // never a simulated bar.
       const first = await api.bulkAnalysisStatus(upload.job_id);
@@ -305,9 +309,10 @@ export default function PortfolioReviewScreen() {
   const isRunning = status?.status === "processing" || status?.status === "pending";
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <ScrollView contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }}>
         <View style={styles.headerRow}>
+          <DrawerMenuButton />
           <ListChecks size={20} color={colors.azure} />
           <Text style={styles.title}>Portfolio Review</Text>
         </View>
@@ -368,8 +373,15 @@ export default function PortfolioReviewScreen() {
         {/* ── Step 2: preview + process trigger ── */}
         {upload && !status && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>File: {upload.filename}</Text>
-            <Text style={styles.cardMeta}>Total Funds: {upload.total_funds}</Text>
+            <View style={styles.successRow}>
+              <CheckCircle2 size={16} color={colors.emerald} />
+              <Text style={[styles.successText, { color: colors.emerald }]}>
+                {upload.total_funds > 0
+                  ? `${countLabel(upload.total_funds, "fund")} found in ${upload.filename}`
+                  : `No fund rows were found in ${upload.filename}`}
+              </Text>
+            </View>
+            <Text style={styles.cardMeta}>Check the list below, then process to score every fund.</Text>
 
             <Text style={[styles.label, { marginTop: space.md }]}>DETECTED FUNDS</Text>
             <View style={styles.previewList}>
@@ -383,6 +395,17 @@ export default function PortfolioReviewScreen() {
                   + {upload.total_funds - upload.detected_funds.length} more
                 </Text>
               )}
+            </View>
+
+            <View style={styles.optionRow}>
+              <TrendingUp size={16} color={colors.azure} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.optionTitle}>Add Nifty 50 benchmark</Text>
+                <Text style={styles.optionSub}>
+                  Adds a Nifty 50 row, scored the same way, so each fund can be compared with the index.
+                </Text>
+              </View>
+              <Switch value={includeNifty50} onValueChange={setIncludeNifty50} accessibilityLabel="Add Nifty 50 benchmark" />
             </View>
 
             <View style={styles.rowGap}>
@@ -407,6 +430,7 @@ export default function PortfolioReviewScreen() {
         {status && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>{isDone ? "Analysis Complete" : isFailed ? "Processing Failed" : "Processing Funds…"}</Text>
+            {isDone && <ImportSummary status={status} colors={colors} styles={styles} />}
 
             <View style={styles.progressTrack}>
               <View
@@ -438,6 +462,10 @@ export default function PortfolioReviewScreen() {
                   ))}
                 </View>
               </View>
+            )}
+
+            {isDone && status.benchmark && (
+              <BenchmarkCard b={status.benchmark} colors={colors} styles={styles} />
             )}
 
             {isDone && (
@@ -480,6 +508,84 @@ export default function PortfolioReviewScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/** One plain sentence per outcome, with correct singular/plural counts —
+ *  the tiles below carry the same numbers, this says what they mean. */
+function ImportSummary({
+  status, colors, styles,
+}: { status: BulkAnalysisJobStatus; colors: ThemeColors; styles: ReturnType<typeof makeStyles> }) {
+  const lines: { text: string; color: string }[] = [];
+  if (status.matched > 0) {
+    lines.push({ text: `${countLabel(status.matched, "fund")} successfully imported and analysed.`, color: colors.emerald });
+  } else {
+    lines.push({ text: "No funds could be analysed from this file.", color: colors.ruby });
+  }
+  if (status.not_found > 0) {
+    lines.push({
+      text: `${countLabel(status.not_found, "fund")} not recognised — listed below to add manually.`,
+      color: colors.amber,
+    });
+  }
+  if (status.errors > 0) {
+    lines.push({
+      text: `${countLabel(status.errors, "fund")} matched but couldn't be scored (see Remarks in the Excel).`,
+      color: colors.ruby,
+    });
+  }
+  return (
+    <View style={{ marginTop: space.sm, gap: 4 }} accessibilityLiveRegion="polite">
+      {lines.map((l) => (
+        <View key={l.text} style={styles.successRow}>
+          {l.color === colors.emerald
+            ? <CheckCircle2 size={14} color={l.color} />
+            : <AlertTriangle size={14} color={l.color} />}
+          <Text style={[styles.successText, { color: l.color }]}>{l.text}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function BenchmarkCard({
+  b, colors, styles,
+}: { b: BulkBenchmark; colors: ThemeColors; styles: ReturnType<typeof makeStyles> }) {
+  if (b.status !== "ok") {
+    return (
+      <View style={[styles.benchCard, { borderColor: colors.amber + "55" }]}>
+        <Text style={styles.optionTitle}>Nifty 50 benchmark not added</Text>
+        <Text style={styles.optionSub}>{b.reason ?? "It couldn't be scored right now."}</Text>
+      </View>
+    );
+  }
+  return (
+    <View style={[styles.benchCard, { borderColor: colors.azure + "55" }]}>
+      <View style={styles.successRow}>
+        <TrendingUp size={14} color={colors.azure} />
+        <Text style={[styles.optionTitle, { color: colors.azure }]}>Nifty 50 benchmark added</Text>
+      </View>
+      <View style={{ flexDirection: "row", marginTop: 8 }}>
+        <BenchStat label={`FQS${b.horizon ? ` (${b.horizon}Y)` : ""}`} value={b.fqs != null ? b.fqs.toFixed(1) : "—"} colors={colors} />
+        <BenchStat label="XIRR (Med)" value={fmtXirr(b.xirr_med ?? null)} colors={colors} />
+        <BenchStat label="P10 XIRR" value={fmtXirr(b.p10_xirr ?? null)} colors={colors} />
+        <BenchStat label="Success" value={b.success_pct != null ? `${(b.success_pct * 100).toFixed(0)}%` : "—"} colors={colors} />
+      </View>
+      <Text style={[styles.optionSub, { marginTop: 8 }]}>
+        Measured through {b.proxy_name ?? "a Nifty 50 index fund"} — an index fund trails the index by its costs.
+      </Text>
+    </View>
+  );
+}
+
+function BenchStat({ label, value, colors }: { label: string; value: string; colors: ThemeColors }) {
+  return (
+    <View style={{ flex: 1, alignItems: "center" }}>
+      <Text style={{ fontSize: 15, fontWeight: "800", color: colors.textPri }}>{value}</Text>
+      <Text style={{ fontSize: 9.5, fontWeight: "700", color: colors.textTer, letterSpacing: 0.5, marginTop: 2 }}>
+        {label.toUpperCase()}
+      </Text>
+    </View>
   );
 }
 
@@ -567,5 +673,16 @@ function makeStyles(colors: ThemeColors, type: ThemeType) {
       padding: 10, marginTop: space.sm,
     },
     errorText: { flex: 1, fontSize: 12.5, lineHeight: 17 },
+
+    successRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    successText: { flex: 1, fontSize: 13, fontWeight: "700", lineHeight: 18 },
+    optionRow: {
+      flexDirection: "row", alignItems: "center", gap: 10, marginTop: space.md,
+      padding: space.sm + 2, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border,
+      backgroundColor: colors.bgElev,
+    },
+    optionTitle: { fontSize: 13.5, fontWeight: "700", color: colors.textPri },
+    optionSub: { fontSize: 11.5, color: colors.textTer, lineHeight: 16, marginTop: 2 },
+    benchCard: { borderWidth: 1, borderRadius: radii.md, padding: space.sm + 4, marginTop: space.md },
   });
 }

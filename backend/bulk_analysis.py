@@ -44,6 +44,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
 import amfi_client
+import fund_status
 import lineage_store
 import proposal_engine
 from xirr_utils import sip_wm_to_xirr
@@ -1353,6 +1354,101 @@ def build_output_workbook(
     return out
 
 
+# ─── Nifty 50 benchmark row ───────────────────────────────────────────────────
+#
+# An index has no NAV of its own on AMFI, so the benchmark is scored through
+# a Nifty 50 INDEX FUND's NAV — the closest investable proxy (it trails the
+# index by its expense ratio and tracking error, which the remark says). The
+# scheme is chosen at run time from the live master list rather than
+# hard-coded: the regular-plan growth Nifty 50 index fund with the longest
+# history in the app's own index, so it is never a guessed scheme code.
+
+NIFTY50_LABEL = "Nifty 50 (Benchmark)"
+_NIFTY50_RE = re.compile(r"\bnifty\s*50\b", re.IGNORECASE)
+_INDEX_RE = re.compile(r"\bindex\b", re.IGNORECASE)
+_NIFTY50_EXCLUDE = re.compile(
+    r"\b(direct|idcw|dividend|payout|etf|fof|fund of funds?|next|equal|value|quality|momentum|"
+    r"low\s*vol\w*|alpha|arbitrage|shariah|sensex|bharat|midcap|smallcap|largemidcap|"
+    r"\d+\s*:\s*\d+|top\s*\d+|g-?sec|sdl|bond|debt)\b",
+    re.IGNORECASE,
+)
+
+
+def nifty50_candidates(by_code: Dict[int, str]) -> List[int]:
+    """Scheme codes whose AMFI name reads as a plain Nifty 50 index fund,
+    regular plan, growth option."""
+    out = []
+    for code, name in by_code.items():
+        if not (_NIFTY50_RE.search(name) and _INDEX_RE.search(name)):
+            continue
+        if _NIFTY50_EXCLUDE.search(name) or amfi_client.is_idcw_scheme(name):
+            continue
+        out.append(code)
+    return out
+
+
+async def resolve_nifty50_proxy(db, by_code: Dict[int, str]) -> Optional[int]:
+    """The candidate with the longest history in fund_nav_meta, active only."""
+    candidates = nifty50_candidates(by_code)
+    if not candidates:
+        return None
+    best: Optional[Tuple[float, int]] = None
+    async for d in db.fund_nav_meta.find(
+        {"scheme_code": {"$in": candidates}},
+        {"_id": 0, "scheme_code": 1, "history_years": 1, "superseded_by": 1, "merged_with": 1,
+         "own_latest_nav_date": 1, "latest_nav_date": 1},
+    ):
+        if fund_status.is_superseded(d) or fund_status.is_stale(d):
+            continue
+        key = (float(d.get("history_years") or 0), -int(d["scheme_code"]))
+        if best is None or key > best:
+            best = key
+    return -best[1] if best else None
+
+
+async def nifty50_benchmark(
+    db, by_code: Dict[int, str],
+    build_analysis_fn: BuildAnalysisFn, cached_analysis_fn: CachedAnalysisFn,
+) -> Tuple[Optional[Dict[str, Any]], Dict[str, Any]]:
+    """(app values for the review row, summary for the job status). The row
+    is None when no proxy could be resolved or scored — the summary says why."""
+    code = await resolve_nifty50_proxy(db, by_code)
+    if code is None:
+        return None, {"status": "unavailable", "label": NIFTY50_LABEL,
+                      "reason": "No Nifty 50 index fund found in the fund index."}
+    try:
+        result = await get_fund_result(db, code, build_analysis_fn, cached_analysis_fn)
+    except Exception as exc:
+        logger.warning("Nifty 50 benchmark (scheme %s) failed: %s", code, exc)
+        return None, {"status": "unavailable", "label": NIFTY50_LABEL, "scheme_code": code,
+                      "reason": "The index fund's NAV history couldn't be scored right now."}
+    proxy_name = result.get("scheme_name") or by_code.get(code) or str(code)
+    values = build_app_values(
+        fund_result=result,
+        remark=f"Benchmark — Nifty 50, measured through {proxy_name} (an index fund; "
+               f"trails the index by its costs)",
+    )
+    values["Fund Name"] = NIFTY50_LABEL
+    values["Category"] = "Index (Benchmark)"
+    picked = result.get("picked")
+    stats, horizon = picked if picked else ({}, None)
+    summary = {
+        "status": "ok" if picked else "unavailable",
+        "label": NIFTY50_LABEL,
+        "scheme_code": code,
+        "proxy_name": proxy_name,
+        "horizon": horizon,
+        "fqs": stats.get("fqs"),
+        "success_pct": stats.get("success_pct"),
+        "xirr_med": values.get("XIRR (Med)"),
+        "p10_xirr": values.get("P10 XIRR"),
+        "median_wm": stats.get("median_wm"),
+    }
+    if not picked:
+        summary["reason"] = "The index fund has no scored rolling window yet."
+    return values, summary
+
+
 # ─── The batch job ────────────────────────────────────────────────────────────
 
 async def process_bulk_job(
@@ -1361,6 +1457,7 @@ async def process_bulk_job(
     workbook_bytes: bytes,
     build_analysis_fn: BuildAnalysisFn,
     cached_analysis_fn: CachedAnalysisFn,
+    include_nifty50: bool = False,
 ) -> None:
     """Background task kicked off by POST /bulk-analysis/{job_id}/process.
 
@@ -1485,6 +1582,20 @@ async def process_bulk_job(
                           "not_found_funds": sorted(not_found_funds, key=lambda f: f["row"])}},
             )
 
+        benchmark: Optional[Dict[str, Any]] = None
+        if include_nifty50:
+            bench_values, benchmark = await nifty50_benchmark(
+                db, by_code, build_analysis_fn, cached_analysis_fn,
+            )
+            if bench_values is not None:
+                # Appended as the sheet's last row, so the advisor's own rows
+                # keep their order and the benchmark reads as a footer line.
+                bench_row: List[Any] = [None] * len(header_row)
+                if id_cols["name"] is not None and id_cols["name"] < len(bench_row):
+                    bench_row[id_cols["name"]] = NIFTY50_LABEL
+                source_rows.append(bench_row)
+                app_values_by_row[len(source_rows) - 1] = bench_values
+
         output_bytes = await asyncio.to_thread(
             build_output_workbook, header_row, source_rows, app_values_by_row,
             fallback_note=saw_fallback_horizon,
@@ -1502,6 +1613,7 @@ async def process_bulk_job(
                     "processed": processed, "matched": matched,
                     "not_found": not_found, "errors": errors,
                     "not_found_funds": sorted(not_found_funds, key=lambda f: f["row"]),
+                    "benchmark": benchmark,
                     "output_bytes": output_bytes,
                     "finished_at": datetime.now(timezone.utc).isoformat(),
                 },

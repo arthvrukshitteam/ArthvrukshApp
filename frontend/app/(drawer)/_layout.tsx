@@ -18,7 +18,7 @@ import { View, Text, StyleSheet, Pressable } from "react-native";
 // expo-router/drawer re-exports everything this file needs.
 import { Drawer, DrawerContentScrollView } from "expo-router/drawer";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BookOpen, ClipboardCheck, LayoutGrid, RefreshCw, SlidersHorizontal } from "lucide-react-native";
+import { BookOpen, ClipboardCheck, LayoutGrid, RefreshCw, Search, SlidersHorizontal, Lock } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useTheme } from "@/src/ThemeProvider";
 import { BrandLogo } from "@/src/components/BrandLogo";
@@ -26,10 +26,12 @@ import { space, radii } from "@/src/theme";
 
 /** Destinations that live only in the drawer, in the order they're shown. */
 const DRAWER_ITEMS = [
+  { route: "/funds",          label: "Fund Search",    Icon: Search,         hint: "Browse and analyse any fund" },
   { route: "/holding-review", label: "Holding Review", Icon: ClipboardCheck, hint: "Previous proposal vs current FQS report" },
   { route: "/insights",     label: "Methodology",  Icon: BookOpen,           hint: "How AV-FQS scores a fund" },
   { route: "/data-refresh", label: "Data Refresh", Icon: RefreshCw,          hint: "NAV and score freshness" },
   { route: "/mode-picker",  label: "Analysis Mode", Icon: SlidersHorizontal, hint: "SIP or Lumpsum" },
+  { route: "/security",     label: "App Lock (PIN)", Icon: Lock,             hint: "Set, change or turn off your PIN" },
 ] as const;
 
 /**
@@ -95,7 +97,7 @@ function DrawerContent(props: DrawerContentProps) {
             Dashboard
           </Text>
           <Text style={[s.itemHint, { color: colors.textTer }]}>
-            Home, Funds, Rolling, Review, Overlap
+            Home, Rolling, Review, Overlap
           </Text>
         </View>
       </Pressable>
@@ -131,6 +133,12 @@ function DrawerContent(props: DrawerContentProps) {
           </Pressable>
         );
       })}
+
+      <View style={[s.footer, { borderTopColor: colors.border }]}>
+        <Text style={[s.footerText, { color: colors.textTer }]}>
+          Created by Exist Digitally, but all copyright goes to Arthvruksh.
+        </Text>
+      </View>
     </DrawerContentScrollView>
   );
 }
@@ -154,6 +162,7 @@ export default function DrawerLayout() {
       {/* The tab stack. Its own header is hidden — each tab screen draws its
           own, and the drawer button is injected by the tabs layout. */}
       <Drawer.Screen name="(tabs)" options={{ headerShown: false, title: "Dashboard" }} />
+      <Drawer.Screen name="funds" options={{ title: "Fund Search", headerShown: false }} />
       <Drawer.Screen name="holding-review" options={{ title: "Holding Review", headerShown: false }} />
       <Drawer.Screen name="insights" options={{ title: "Methodology" }} />
     </Drawer>
@@ -188,4 +197,12 @@ const s = StyleSheet.create({
     marginVertical: space.sm,
     marginHorizontal: space.md,
   },
+  footer: {
+    marginTop: space.lg,
+    marginHorizontal: space.md,
+    paddingTop: space.md,
+    paddingBottom: space.lg,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  footerText: { fontSize: 11, lineHeight: 16, textAlign: "center" },
 });

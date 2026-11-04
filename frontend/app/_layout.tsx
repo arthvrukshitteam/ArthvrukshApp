@@ -8,6 +8,8 @@ import { ViewModeProvider } from "@/src/ViewModeProvider";
 import { ModeProvider, useMode } from "@/src/ModeProvider";
 import { TenureProvider, useTenure } from "@/src/TenureProvider";
 import { ProposalDraftProvider } from "@/src/ProposalDraftProvider";
+import { AppLockProvider } from "@/src/AppLockProvider";
+import { AppLockGate } from "@/src/components/AppLock";
 
 function ModeGuard({ children }: { children: React.ReactNode }) {
   const { mode, loading: modeLoading } = useMode();
@@ -35,10 +37,13 @@ function ModeGuard({ children }: { children: React.ReactNode }) {
 
 function ThemedStack() {
   const { colors, scheme } = useTheme();
+  const { mode } = useMode();
+  const { tenure } = useTenure();
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaProvider>
         <StatusBar style={scheme === "light" ? "dark" : "light"} />
+        <AppLockGate onboarded={mode !== null && tenure !== null}>
         <ModeGuard>
           <Stack
             screenOptions={{
@@ -71,8 +76,13 @@ function ThemedStack() {
               name="proposal/[id]"
               options={{ title: "Proposal" }}
             />
+            <Stack.Screen
+              name="security"
+              options={{ title: "App Lock (PIN)" }}
+            />
           </Stack>
         </ModeGuard>
+        </AppLockGate>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
@@ -85,7 +95,9 @@ export default function RootLayout() {
         <ModeProvider>
           <TenureProvider>
             <ProposalDraftProvider>
-              <ThemedStack />
+              <AppLockProvider>
+                <ThemedStack />
+              </AppLockProvider>
             </ProposalDraftProvider>
           </TenureProvider>
         </ModeProvider>

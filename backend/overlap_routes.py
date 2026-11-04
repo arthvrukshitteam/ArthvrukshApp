@@ -26,11 +26,14 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+import amfi_client
+import fund_status
 import holdings_ingest
 import holdings_store
 from holdings_parser import HoldingsParseError
@@ -39,6 +42,23 @@ from overlap_engine import compute_overlap
 logger = logging.getLogger(__name__)
 
 MAX_UPLOAD_BYTES = 40 * 1024 * 1024
+_DIRECT_RE = re.compile(r"\bdirect\b", re.IGNORECASE)
+
+# Fields from fund_nav_meta that help an advisor decide WHICH of two
+# overlapping funds to keep — read-only, already computed nightly.
+_FUND_FACTS_PROJECTION = {
+    "_id": 0, "scheme_code": 1, "scheme_name": 1, "fund_house": 1, "category": 1,
+    "scheme_category": 1, "headline_fqs": 1, "headline_tier": 1, "headline_horizon": 1,
+    "history_years": 1,
+}
+
+
+def _name_query(q: str) -> Dict[str, Any]:
+    """Every whitespace token must appear in the name (any order), so
+    'hdfc flexi' finds 'HDFC Flexi Cap Fund - Growth'. Tokens are escaped —
+    user text is never interpreted as a regex."""
+    tokens = [t for t in q.lower().split() if t][:6]
+    return {"$and": [{"scheme_name": {"$regex": re.escape(t), "$options": "i"}} for t in tokens]} if tokens else {}
 
 
 class IngestRequest(BaseModel):
@@ -66,6 +86,76 @@ def build_router(db) -> APIRouter:
         """
         rows = await holdings_store.available_funds(db, period)
         return {"count": len(rows), "period": period, "funds": rows}
+
+    @router.get("/candidates")
+    async def candidates(
+        q: Optional[str] = Query(None, max_length=80),
+        limit: int = Query(60, ge=1, le=200),
+    ) -> Dict[str, Any]:
+        """Funds the overlap pickers offer: the app's OWN fund universe
+        (fund_nav_meta — active regular plans, the same index Home ranks),
+        never an arbitrary external name.
+
+        Every row says whether a portfolio disclosure is on file
+        (`has_holdings`). Those come first: they are the ones that can be
+        compared right now. The rest stay selectable so the advisor can see
+        the fund is known and upload its disclosure, rather than the picker
+        silently looking empty — which is what made the old picker (fed only
+        from fund_holdings) appear broken whenever nothing had been ingested.
+        """
+        query_text = (q or "").strip()
+        holdings_rows = await holdings_store.available_funds(db)
+        holdings_by_code = {r["scheme_code"]: r for r in holdings_rows}
+
+        rows: Dict[int, Dict[str, Any]] = {}
+        name_filter = _name_query(query_text) if query_text else {}
+
+        # Funds with a disclosure on file, filtered by the same tokens.
+        for r in holdings_rows:
+            name = r.get("scheme_name") or ""
+            if query_text and not all(t in name.lower() for t in query_text.lower().split()):
+                continue
+            rows[r["scheme_code"]] = {
+                "scheme_code": r["scheme_code"], "scheme_name": name,
+                "has_holdings": True, "period": r.get("period"),
+                "equity_count": r.get("equity_count"), "amc": r.get("amc") or None,
+            }
+
+        base = fund_status.merge_query(name_filter or {})
+        cursor = (
+            db.fund_nav_meta.find(base, _FUND_FACTS_PROJECTION)
+            .sort([("headline_fqs", -1), ("scheme_name", 1)])
+            .limit(limit * 3)
+        )
+        async for d in cursor:
+            code = d.get("scheme_code")
+            name = d.get("scheme_name") or ""
+            if code is None or not name or amfi_client.is_idcw_scheme(name) or _DIRECT_RE.search(name):
+                continue
+            h = holdings_by_code.get(code)
+            row = rows.get(code) or {
+                "scheme_code": code, "scheme_name": name,
+                "has_holdings": bool(h), "period": (h or {}).get("period"),
+                "equity_count": (h or {}).get("equity_count"), "amc": None,
+            }
+            row.update({
+                "amc": row.get("amc") or d.get("fund_house") or None,
+                "category": d.get("category"),
+                "headline_fqs": d.get("headline_fqs"),
+            })
+            rows[code] = row
+
+        ordered = sorted(
+            rows.values(),
+            key=lambda r: (0 if r["has_holdings"] else 1,
+                           -(r.get("headline_fqs") or 0), r["scheme_name"]),
+        )
+        with_holdings = sum(1 for r in ordered if r["has_holdings"])
+        return {
+            "query": query_text,
+            "with_holdings": with_holdings,
+            "results": ordered[: max(limit, with_holdings if not query_text else limit)],
+        }
 
     @router.get("/coverage")
     async def coverage() -> Dict[str, Any]:
@@ -106,20 +196,39 @@ def build_router(db) -> APIRouter:
             raise HTTPException(404, f"No holdings for {resolved} for one of the two funds.")
 
         result = compute_overlap(doc_a["holdings"], doc_b["holdings"])
+
+        facts: Dict[int, Dict[str, Any]] = {}
+        try:
+            async for d in db.fund_nav_meta.find(
+                {"scheme_code": {"$in": [fund_a, fund_b]}}, _FUND_FACTS_PROJECTION,
+            ):
+                facts[d["scheme_code"]] = d
+        except Exception:
+            logger.exception("overlap compare: fund facts lookup failed")
+
+        def _side(doc: Dict[str, Any], equity_count: int, top10: float) -> Dict[str, Any]:
+            f = facts.get(doc["scheme_code"], {})
+            return {
+                "scheme_code":   doc["scheme_code"],
+                "scheme_name":   doc.get("scheme_name") or f.get("scheme_name") or "",
+                "equity_count":  equity_count,
+                "equity_weight": doc.get("equity_weight"),
+                "amc":           doc.get("amc") or f.get("fund_house") or None,
+                "category":      f.get("category"),
+                "headline_fqs":  f.get("headline_fqs"),
+                "headline_tier": f.get("headline_tier"),
+                "headline_horizon": f.get("headline_horizon"),
+                "top10_weight":  round(top10, 2),
+            }
+
+        def _top10(holdings: List[Dict[str, Any]]) -> float:
+            ws = sorted((float(h.get("weight_pct") or 0) for h in holdings), reverse=True)
+            return sum(w for w in ws[:10] if w > 0)
+
         return {
             "period": resolved,
-            "fund_a": {
-                "scheme_code":  doc_a["scheme_code"],
-                "scheme_name":  doc_a.get("scheme_name") or "",
-                "equity_count": result["fund_a_holdings"],
-                "equity_weight": doc_a.get("equity_weight"),
-            },
-            "fund_b": {
-                "scheme_code":  doc_b["scheme_code"],
-                "scheme_name":  doc_b.get("scheme_name") or "",
-                "equity_count": result["fund_b_holdings"],
-                "equity_weight": doc_b.get("equity_weight"),
-            },
+            "fund_a": _side(doc_a, result["fund_a_holdings"], _top10(doc_a["holdings"])),
+            "fund_b": _side(doc_b, result["fund_b_holdings"], _top10(doc_b["holdings"])),
             **result,
         }
 

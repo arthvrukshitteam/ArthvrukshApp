@@ -30,6 +30,7 @@ import { useTheme } from "@/src/ThemeProvider";
 import { radii, space, type ThemeColors } from "@/src/theme";
 import { DrawerMenuButton } from "@/src/components/DrawerMenuButton";
 import { FundSearchModal } from "@/src/components/FundSearchModal";
+import { countLabel } from "@/src/utils/format";
 import {
   ComparisonCard, FundEditCard, LabeledInput, PreviewTable, errMsg, fmtMetric,
 } from "@/src/components/HoldingReviewParts";
@@ -72,6 +73,7 @@ export default function HoldingReviewScreen() {
   const [step, setStep] = useState(0);
   const [review, setReview] = useState<HoldingReview | null>(null);
   const [recent, setRecent] = useState<HoldingReviewSummary[]>([]);
+  const [recentLoading, setRecentLoading] = useState(true);
   const [file, setFile] = useState<PickedFile | null>(null);
   const [busy, setBusy] = useState<string | null>(null);   // label of the running action
   const [error, setError] = useState<string | null>(null);
@@ -84,6 +86,7 @@ export default function HoldingReviewScreen() {
 
   const loadRecent = useCallback(async () => {
     try { setRecent((await api.holdingReviewList()).results); } catch { /* list is a convenience */ }
+    finally { if (mounted.current) setRecentLoading(false); }
   }, []);
   useEffect(() => { loadRecent(); }, [loadRecent]);
 
@@ -221,7 +224,7 @@ export default function HoldingReviewScreen() {
 
   // ── render ──────────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={s.root} edges={["bottom"]}>
+    <SafeAreaView style={s.root} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
         <View style={s.titleRow}>
           <DrawerMenuButton />
@@ -274,7 +277,9 @@ export default function HoldingReviewScreen() {
             </View>
 
             <Text style={s.h2}>Recent reviews</Text>
-            {recent.length === 0 ? <Text style={s.sub}>No reviews yet.</Text> : null}
+            {recentLoading
+              ? <View style={{ paddingVertical: space.md, alignItems: "center" }}><ActivityIndicator color={colors.azure} /></View>
+              : recent.length === 0 ? <Text style={s.sub}>No reviews yet.</Text> : null}
             {recent.map((r) => (
               <Pressable key={r.review_id} onPress={() => openReview(r.review_id)} style={s.card}>
                 <View style={s.rowBetween}>
@@ -284,7 +289,7 @@ export default function HoldingReviewScreen() {
                   </Text>
                 </View>
                 <Text style={s.sub}>
-                  {r.previous_review_date ?? "–"} → {r.current_review_date ?? "–"} · {r.fund_count} funds{r.pan_masked ? ` · ${r.pan_masked}` : ""}
+                  {r.previous_review_date ?? "–"} → {r.current_review_date ?? "–"} · {countLabel(r.fund_count, "fund")}{r.pan_masked ? ` · ${r.pan_masked}` : ""}
                 </Text>
               </Pressable>
             ))}
@@ -294,6 +299,22 @@ export default function HoldingReviewScreen() {
         {/* ── STEP 1: verify ───────────────────────────────────────────────── */}
         {review && step === 1 ? (
           <>
+            {(() => {
+              const total = review.funds.length;
+              const matched = review.funds.filter((f) => f.scheme_code != null).length;
+              const pending = total - matched;
+              return (
+                <View style={[s.banner, { borderColor: total && !pending ? colors.emerald : colors.amber }]}>
+                  <Text style={[s.bannerTxt, { fontWeight: "700" }]}>
+                    {total === 0
+                      ? "No funds were found in this file — add them below."
+                      : `${countLabel(matched, "fund")} successfully imported`
+                        + (pending ? ` · ${countLabel(pending, "fund")} still ${pending === 1 ? "needs" : "need"} a scheme match` : "")
+                        + "."}
+                  </Text>
+                </View>
+              );
+            })()}
             {review.parse_warnings.map((w) => (
               <View key={w} style={[s.banner, { borderColor: colors.amber }]}><Text style={s.bannerTxt}>{w}</Text></View>
             ))}

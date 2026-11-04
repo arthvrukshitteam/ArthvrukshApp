@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any, Awaitable, Callable, Dict, List, Literal, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -42,6 +42,33 @@ CacheFn = Callable[[int], Awaitable[Optional[Dict[str, Any]]]]
 class ProposalFundInput(BaseModel):
     scheme_code: int
     allocation_pct: float = Field(..., gt=0, le=1, description="0..1, e.g. 0.25 = 25%")
+    # Per-fund scoring basis: the start-date filter (Fund Detail) or AMC
+    # period (Home card) that was on screen when the advisor added the fund.
+    # Without it the proposal re-scored the fund since inception and showed
+    # different FQS/XIRR from what the advisor had just been looking at.
+    start_date: Optional[str] = Field(None, description="YYYY-MM-DD; score this fund from this date")
+    include_predecessor: bool = True
+    # True when the basis above was chosen for this fund explicitly (Fund
+    # Detail, or a Home card's AMC period) — then it is used as-is, even
+    # "since inception", instead of the Home-wide 2010/Management toggles.
+    explicit_basis: bool = False
+
+    @field_validator("start_date")
+    @classmethod
+    def _validate_start_date(cls, v: Optional[str]) -> Optional[str]:
+        if v in (None, ""):
+            return None
+        try:
+            parsed = date.fromisoformat(v)
+        except (TypeError, ValueError):
+            raise ValueError("start_date must be YYYY-MM-DD")
+        if parsed > datetime.now(timezone.utc).date():
+            raise ValueError("start_date cannot be in the future")
+        return parsed.isoformat()
+
+    @property
+    def has_custom_basis(self) -> bool:
+        return self.explicit_basis or self.start_date is not None or not self.include_predecessor
 
 
 class SwpInput(BaseModel):
@@ -181,13 +208,38 @@ def build_router(
             return cached
         return await build_lumpsum_analysis(scheme_code, user_years=horizon)
 
+    async def _custom_basis_analysis(
+        scheme_code: int, mode: str, horizon: int, start_date: Optional[str], include_predecessor: bool,
+    ) -> Dict[str, Any]:
+        """Live computation on the fund's own chosen basis — the same builder
+        and arguments /funds/{code}/analyze uses for that filter, so the
+        proposal row equals what Fund Detail showed."""
+        start_d = date.fromisoformat(start_date) if start_date else None
+        builder = build_sip_analysis if mode == "sip" else build_lumpsum_analysis
+        return await builder(
+            scheme_code, start_date=start_d, user_years=horizon,
+            include_predecessor=include_predecessor,
+        )
+
     async def _fund_row(
         scheme_code: int, allocation_pct: float, horizon: int, mode: str,
         since_2010: bool, separate_management: bool,
+        start_date: Optional[str] = None, include_predecessor: bool = True,
+        explicit_basis: bool = False,
     ) -> pe.FundRow:
         try:
             analysis = None
-            if since_2010 or separate_management:
+            if start_date is not None or not include_predecessor:
+                # A per-fund basis outranks the Home-wide toggles: it is the
+                # more specific choice the advisor made for THIS fund.
+                analysis = await _custom_basis_analysis(
+                    scheme_code, mode, horizon, start_date, include_predecessor,
+                )
+            elif explicit_basis:
+                # Explicitly "since inception": the plain cached analysis,
+                # deliberately skipping the toggle variants below.
+                analysis = await _fund_analysis(scheme_code, mode, horizon, since_2010, separate_management)
+            if analysis is None and (since_2010 or separate_management):
                 analysis = await _variant_fund_analysis(scheme_code, mode, since_2010, separate_management)
             if analysis is None:
                 analysis = await _fund_analysis(scheme_code, mode, horizon, since_2010, separate_management)
@@ -217,9 +269,19 @@ def build_router(
             await _fund_row(
                 f.scheme_code, f.allocation_pct, horizon, mode,
                 req.since_2010, req.separate_management,
+                start_date=f.start_date, include_predecessor=f.include_predecessor,
+                explicit_basis=f.explicit_basis,
             )
             for f in req.funds
         ]
+        fund_bases = {
+            str(f.scheme_code): {
+                "start_date": f.start_date,
+                "include_predecessor": f.include_predecessor,
+                "explicit_basis": f.explicit_basis,
+            }
+            for f in req.funds if f.has_custom_basis
+        }
         projection = pe.build_mode_projection(fund_rows, req.investment_amount, horizon, mode)
 
         # ── Correctness guard ────────────────────────────────────────────────
@@ -280,7 +342,16 @@ def build_router(
                 if req.separate_management and not req.since_2010
                 else "Since 2010, with a verified management change scored from that break date onward where applicable"
             )
-            warnings.append(f"Built with: {toggle_note} (matches the Home screen's 2010/Mgmt toggle at selection time).")
+            warnings.append(f"Built with: {toggle_note} (matches the Home screen's 2010/Management toggle at selection time).")
+        if fund_bases:
+            names = {r.scheme_code: r.scheme_name for r in fund_rows}
+            parts = []
+            for code_s, b in fund_bases.items():
+                label = f"from {b['start_date']}" if b["start_date"] else "since inception"
+                if not b["include_predecessor"]:
+                    label += ", new management only"
+                parts.append(f"{names.get(int(code_s), code_s)} ({label})")
+            warnings.append("Scored on the basis chosen when the fund was added: " + "; ".join(parts) + ".")
         if projection.aggregate.extrapolated_funds:
             # Not an error — these are Additional Recommendation funds shown at
             # their own shorter window with wealth extrapolated to the tenure.
@@ -314,6 +385,7 @@ def build_router(
             "horizon": horizon,
             "since_2010": req.since_2010,
             "separate_management": req.separate_management,
+            "fund_bases": fund_bases,
             "plan": pe.mode_projection_to_dict(projection),
             "swp": swp_dict,
             "warnings": warnings,

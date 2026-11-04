@@ -43,6 +43,7 @@ import lumpsum_refresh as lumpsum_refresh_mod
 import inspect
 
 import amfi_client
+import continuity_floor
 import fund_lineage
 import fund_status
 import lineage_store
@@ -167,6 +168,16 @@ async def lifespan(_: FastAPI):
         await fund_status.ensure_indexes(db)
     except Exception:
         logger.exception("fund_nav_meta index creation failed at startup (continuing)")
+
+    # Cache / lookup collections that were read by key with no index (see
+    # docs/audits/performance-audit.md P4): every Fund Detail open hits
+    # fund_analysis, the Funds screen sorts fund_recent, the Management
+    # toggle reads lineage + continuity events by scheme_code, and fund
+    # browsing sorts fund_nav_meta by headline FQS. Idempotent; non-fatal.
+    try:
+        await _ensure_cache_indexes()
+    except Exception:
+        logger.exception("cache index creation failed at startup (continuing)")
 
     # Collapse every known AMC change / merger / scheme transfer down to the
     # surviving fund, universe-wide, using the successor map just loaded
@@ -1030,6 +1041,12 @@ async def home_universe(
     # descending XIRR as the tiebreak — matches the frontend's own re-sort.
     bonus_funds.sort(key=lambda f: (-(f.get("best_horizon") or 0), -(f.get("blended_xirr") or 0)))
 
+    if separate_management:
+        # Every management break per fund, so a card can offer "score from
+        # 2018 / 2016 / 2010" instead of only the latest break.
+        await _attach_amc_breaks(eligible)
+        await _attach_amc_breaks(bonus_funds)
+
     fqs_log = await db.fqs_refresh_log.find_one({"_id": "fqs_refresh"}, {"_id": 0})
     return {
         "mode":                   "sip",
@@ -1248,6 +1265,10 @@ async def lumpsum_universe(
     # descending XIRR as the tiebreak.
     bonus_funds.sort(key=lambda f: (-(f.get("best_horizon") or 0), -(f.get("blended_xirr") or 0)))
 
+    if separate_management:
+        await _attach_amc_breaks(eligible)
+        await _attach_amc_breaks(bonus_funds)
+
     return _envelope(eligible, bonus_funds, len(eligible), total_indexed, benchmark_xirr)
 
 
@@ -1320,6 +1341,52 @@ async def _annotate_fund_status(
         row["current_scheme_code"] = doc.get("superseded_by") or doc.get("merged_with")
         out.append(row)
     return out
+
+
+_BROWSE_DIRECT_RE = re.compile(r"\bdirect\b", re.IGNORECASE)
+
+
+@api.get("/funds/browse")
+async def browse_funds(
+    offset: int = Query(0, ge=0, le=50000),
+    limit: int = Query(40, ge=1, le=100),
+):
+    """A page of the app's own fund universe with no query typed — what the
+    search screens show the moment they open, instead of an empty box.
+
+    Active regular-plan schemes from fund_nav_meta (the same index Home
+    ranks), best headline FQS first, plan/option variants collapsed. Paging
+    is over raw documents; `next_offset` is where the next page starts
+    (IDCW/Direct rows skipped in Python can make a page slightly short).
+    """
+    query = fund_status.merge_query({})
+    total = await db.fund_nav_meta.count_documents(query)
+    scan = limit * 2
+    cursor = (
+        db.fund_nav_meta.find(
+            query,
+            {"_id": 0, "scheme_code": 1, "scheme_name": 1, "category": 1,
+             "headline_fqs": 1, "headline_tier": 1},
+        )
+        .sort([("headline_fqs", -1), ("scheme_name", 1)])
+        .skip(offset)
+        .limit(scan)
+    )
+    rows: List[Dict[str, Any]] = []
+    scanned = 0
+    async for d in cursor:
+        scanned += 1
+        name = d.get("scheme_name") or ""
+        if not name or amfi_client.is_idcw_scheme(name) or _BROWSE_DIRECT_RE.search(name):
+            continue
+        rows.append({**d, "is_active": True})
+    results = _dedupe_search_variants(rows)[:limit]
+    return {
+        "total": total,
+        "offset": offset,
+        "next_offset": offset + scanned if scanned == scan else None,
+        "results": results,
+    }
 
 
 @api.get("/funds/search")
@@ -1578,6 +1645,35 @@ async def fund_history_debug(scheme_code: int):
     }
 
 
+async def _ensure_cache_indexes() -> None:
+    # fund_lineage is deliberately absent: lineage_store builds it with a
+    # UNIQUE scheme_code index, and a plain one would conflict.
+    specs = [
+        (db.fund_analysis, [("scheme_code", 1), ("start_date_applied", 1)]),
+        (db.fund_lumpsum_analysis, [("scheme_code", 1), ("start_date_applied", 1)]),
+        (db.fund_recent, [("last_seen", -1)]),
+        (db.fund_continuity_events, [("scheme_code", 1)]),
+        (db.fund_nav_meta, [("headline_fqs", -1), ("scheme_name", 1)]),
+    ]
+    for coll, keys in specs:
+        try:
+            await coll.create_index(keys)
+        except Exception:
+            logger.exception("index %s on %s failed (continuing)", keys, coll.name)
+
+
+def _without_windows(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Shallow copy of an analysis with each horizon's `windows` removed.
+    Copies, never mutates — the input may be a cached document."""
+    return {
+        **payload,
+        "horizons": [
+            {k: v for k, v in h.items() if k != "windows"}
+            for h in (payload.get("horizons") or [])
+        ],
+    }
+
+
 @api.get("/funds/{scheme_code}/analyze")
 async def analyze(
     scheme_code: int,
@@ -1596,6 +1692,12 @@ async def analyze(
             "management only' figures instead of the full continuous history."
         ),
     ),
+    summary: bool = Query(
+        False,
+        description="Drop per-window rows from every horizon. For callers that only "
+                    "need per-horizon stats (a Home card recomputed for an AMC period): "
+                    "the windows are the bulk of a ~0.7 MB response.",
+    ),
 ):
     start_d = _parse_date(start_date)
 
@@ -1607,15 +1709,16 @@ async def analyze(
         if cached:
             cached.pop("_id", None)
             await _touch_recent(scheme_code, cached.get("scheme_name", ""))
-            return cached
+            return _without_windows(cached) if summary else cached
 
     try:
-        return await _build_analysis(
+        result = await _build_analysis(
             scheme_code,
             start_date=start_d,
             user_years=years,
             include_predecessor=include_predecessor,
         )
+        return _without_windows(result) if summary else result
     except HTTPException:
         raise
     except Exception as exc:
@@ -1805,6 +1908,7 @@ async def analyze_lumpsum(
             "stitched in."
         ),
     ),
+    summary: bool = Query(False, description="Drop per-window rows — see /analyze."),
 ):
     """Lumpsum rolling-window analysis for a fund (1–50Y horizons)."""
     start_d = _parse_date(start_date)
@@ -1816,13 +1920,15 @@ async def analyze_lumpsum(
         # left the fund screen showing an empty "ROLLING …Y LUMPSUM WINDOWS"
         # table ("Load this fund directly…") — unlike SIP, whose cache always
         # includes windows. Falling through recomputes with full windows,
-        # making Lumpsum behave exactly like SIP.
-        if cached and any(h.get("windows") for h in (cached.get("horizons") or [])):
+        # making Lumpsum behave exactly like SIP. A summary caller never
+        # wanted windows, so any cached doc serves it.
+        if cached and (summary or any(h.get("windows") for h in (cached.get("horizons") or []))):
             cached.pop("_id", None)
             await _touch_recent(scheme_code, cached.get("scheme_name", ""))
-            return cached
+            return _without_windows(cached) if summary else cached
 
-    return await _build_lumpsum_analysis(scheme_code, start_date=start_d, include_predecessor=include_predecessor)
+    result = await _build_lumpsum_analysis(scheme_code, start_date=start_d, include_predecessor=include_predecessor)
+    return _without_windows(result) if summary else result
 
 
 # ─── Categories ──────────────────────────────────────────────────────────────
@@ -1854,6 +1960,110 @@ async def fund_lineage_explain(scheme_code: int, q: Optional[str] = Query(None))
                    f"Run backend/scripts/build_lineage.py --persist to populate it.",
         )
     return lineage_store.explain_record(q or str(scheme_code), doc)
+
+
+# ─── AMC periods (every management break, selectable) ───────────────────────
+
+_AMC_META_PROJECTION = {
+    "_id": 0, "scheme_code": 1, "scheme_name": 1, "fund_house": 1,
+    "earliest_nav_date": 1, "own_earliest_nav_date": 1, "predecessor_used": 1,
+    "continuity_reset_date": 1,
+}
+
+
+def _amc_breaks_from(
+    meta: Optional[Dict[str, Any]],
+    lineage_doc: Optional[Dict[str, Any]],
+    manual_event: Optional[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """All management breaks for one fund from already-fetched docs — the
+    same signals the nightly continuity pass scores the latest of."""
+    meta = meta or {}
+    own_start = meta.get("own_earliest_nav_date")
+    curated = (
+        continuity_floor.curated_amc_actions(
+            meta.get("fund_house"), own_start or meta.get("earliest_nav_date"),
+            fund_lineage.CURATED_AMC_CHANGES, fund_lineage.canonical_house,
+        )
+        if not lineage_doc else []
+    )
+    merger_boundary = own_start if (meta.get("predecessor_used") and own_start) else None
+    return continuity_floor.all_breaks(
+        lineage_doc=lineage_doc,
+        curated_actions=curated,
+        manual_event=manual_event,
+        merger_boundary=merger_boundary,
+    )
+
+
+async def _attach_amc_breaks(funds: List[Dict[str, Any]]) -> None:
+    """Annotate universe rows with `amc_breaks` (only rows that have one).
+
+    Three bounded $in reads over the page's codes rather than per-fund
+    lookups; only called when the Management toggle is on.
+    """
+    codes = [f["scheme_code"] for f in funds if f.get("scheme_code") is not None]
+    if not codes:
+        return
+    try:
+        await _attach_amc_breaks_unsafe(funds, codes)
+    except Exception:
+        # The period choice is an enhancement on top of the ranked list —
+        # never a reason for the Home screen itself to fail to load.
+        logger.exception("amc_breaks annotation failed; universe served without it")
+
+
+async def _attach_amc_breaks_unsafe(funds: List[Dict[str, Any]], codes: List[int]) -> None:
+    metas: Dict[int, Dict[str, Any]] = {}
+    async for d in db.fund_nav_meta.find({"scheme_code": {"$in": codes}}, _AMC_META_PROJECTION):
+        metas[d["scheme_code"]] = d
+    lineage_docs: Dict[int, Dict[str, Any]] = {}
+    async for d in db[lineage_store.LINEAGE_COLLECTION].find(
+        {"scheme_code": {"$in": codes}, "corporate_actions.type": "AMC_CHANGE"},
+        {"_id": 0, "scheme_code": 1, "corporate_actions": 1},
+    ):
+        lineage_docs[d["scheme_code"]] = d
+    manual: Dict[int, Dict[str, Any]] = {}
+    async for d in db.fund_continuity_events.find({"scheme_code": {"$in": codes}}, {"_id": 0}):
+        manual[d["scheme_code"]] = d
+    for f in funds:
+        code = f.get("scheme_code")
+        breaks = _amc_breaks_from(metas.get(code), lineage_docs.get(code), manual.get(code))
+        f["amc_breaks"] = breaks or None
+
+
+@api.get("/funds/{scheme_code}/amc-periods")
+async def fund_amc_periods(scheme_code: int):
+    """Every management period this fund has been through, newest first.
+
+    Unlike /lineage this never 404s for want of a lineage build: the curated
+    AMC-change table and the fund's own merger boundary are always
+    available, so the Fund Detail period picker works on every deployment.
+    """
+    meta = await db.fund_nav_meta.find_one({"scheme_code": scheme_code}, _AMC_META_PROJECTION)
+    lineage_doc = await db[lineage_store.LINEAGE_COLLECTION].find_one(
+        {"scheme_code": scheme_code}, {"_id": 0, "corporate_actions": 1, "current_amc": 1},
+    )
+    manual = await db.fund_continuity_events.find_one({"scheme_code": scheme_code}, {"_id": 0})
+    if not meta and not lineage_doc and not manual:
+        raise HTTPException(status_code=404, detail=f"Scheme {scheme_code} is not in the fund index.")
+
+    has_lineage_amc = bool(lineage_doc) and any(
+        a.get("type") == "AMC_CHANGE" for a in (lineage_doc.get("corporate_actions") or [])
+    )
+    breaks = _amc_breaks_from(meta, lineage_doc if has_lineage_amc else None, manual)
+    caveat = None
+    if breaks and not has_lineage_amc and any(b["source"] == "curated" for b in breaks):
+        caveat = ("AMC changes shown come from ArthVruksh's verified list of fund-house "
+                  "renames and acquisitions.")
+    return {
+        "scheme_code": scheme_code,
+        "current_amc": (lineage_doc or {}).get("current_amc") or (meta or {}).get("fund_house") or None,
+        "first_nav_date": (meta or {}).get("earliest_nav_date"),
+        "breaks": breaks,
+        "latest_break": (meta or {}).get("continuity_reset_date"),
+        "caveat": caveat,
+    }
 
 
 @api.get("/refresh/status")

@@ -38,7 +38,7 @@ import binascii
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import Response
@@ -80,6 +80,12 @@ async def recover_orphaned_jobs(db) -> int:
 class Base64UploadIn(BaseModel):
     filename: str
     content_base64: str
+
+
+class ProcessOptions(BaseModel):
+    # Adds a "Nifty 50 (Benchmark)" row scored through a Nifty 50 index
+    # fund — see bulk_analysis.nifty50_benchmark.
+    include_nifty50: bool = False
 
 
 def build_router(db, build_analysis_fn: ba.BuildAnalysisFn, cached_analysis_fn: ba.CachedAnalysisFn) -> APIRouter:
@@ -161,7 +167,8 @@ def build_router(db, build_analysis_fn: ba.BuildAnalysisFn, cached_analysis_fn: 
         return await _finish_upload(body.filename, content)
 
     @router.post("/{job_id}/process")
-    async def process(job_id: str):
+    async def process(job_id: str, options: Optional[ProcessOptions] = None):
+        include_nifty50 = bool(options and options.include_nifty50)
         doc = await jobs.find_one({"_id": job_id}, {"status": 1, "workbook_bytes": 1})
         if not doc:
             raise HTTPException(status_code=404, detail="Job not found")
@@ -178,8 +185,9 @@ def build_router(db, build_analysis_fn: ba.BuildAnalysisFn, cached_analysis_fn: 
         await jobs.update_one(
             {"_id": job_id},
             {"$set": {"status": "processing", "processed": 0, "matched": 0,
-                      "not_found": 0, "errors": 0, "finished_at": None},
-             "$unset": {"error": ""}},
+                      "not_found": 0, "errors": 0, "finished_at": None,
+                      "include_nifty50": include_nifty50},
+             "$unset": {"error": "", "benchmark": ""}},
         )
         workbook_bytes = bytes(doc["workbook_bytes"])
         # The job document (with its own copy of the upload) is not needed once
@@ -187,7 +195,10 @@ def build_router(db, build_analysis_fn: ba.BuildAnalysisFn, cached_analysis_fn: 
         # for the life of the request doubles this endpoint's peak RSS.
         doc.clear()
         task = asyncio.create_task(
-            ba.process_bulk_job(job_id, db, workbook_bytes, build_analysis_fn, cached_analysis_fn)
+            ba.process_bulk_job(
+                job_id, db, workbook_bytes, build_analysis_fn, cached_analysis_fn,
+                include_nifty50=include_nifty50,
+            )
         )
         _running_tasks[job_id] = task
         # Finished handles are dropped as soon as the task completes. Without

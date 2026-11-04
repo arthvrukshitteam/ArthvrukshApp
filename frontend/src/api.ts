@@ -34,6 +34,41 @@ async function get<T>(path: string): Promise<T> {
   return res.json();
 }
 
+// Short-lived response cache + in-flight de-duplication for read-only GETs
+// whose data only changes with the nightly batch (the universe lists, fund
+// browse pages). Flipping a Home toggle off and back on, or returning to a
+// tab, used to re-download the whole ranked universe every time.
+const _getCache = new Map<string, { at: number; value: unknown }>();
+const _inFlight = new Map<string, Promise<unknown>>();
+const GET_CACHE_MAX = 40;
+
+async function getCached<T>(path: string, ttlMs: number): Promise<T> {
+  const hit = _getCache.get(path);
+  if (hit && Date.now() - hit.at < ttlMs) return hit.value as T;
+  const pending = _inFlight.get(path);
+  if (pending) return pending as Promise<T>;
+  const p = get<T>(path)
+    .then((value) => {
+      if (_getCache.size >= GET_CACHE_MAX) {
+        const oldest = _getCache.keys().next().value;
+        if (oldest !== undefined) _getCache.delete(oldest);
+      }
+      _getCache.set(path, { at: Date.now(), value });
+      return value;
+    })
+    .finally(() => _inFlight.delete(path));
+  _inFlight.set(path, p);
+  return p;
+}
+
+/** Drop cached GETs (pull-to-refresh must always hit the network). */
+export function invalidateApiCache(prefix?: string) {
+  if (!prefix) { _getCache.clear(); return; }
+  for (const k of [..._getCache.keys()]) if (k.startsWith(prefix)) _getCache.delete(k);
+}
+
+const UNIVERSE_TTL_MS = 3 * 60 * 1000;
+
 async function post<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(buildUrl(path), {
     method: "POST",
@@ -212,6 +247,31 @@ export interface EligibleFund extends UniverseMetrics {
   continuity_reset_date?: string | null;
   /** Short label for why (e.g. "Merger / successor scheme change"). */
   continuity_reason?: string | null;
+  /** Only with separate_management=true: every recorded management break
+   *  for this fund (AMC change, merger boundary, curated event), newest
+   *  first. Two or more → the card offers a starting-period choice. */
+  amc_breaks?: AmcBreak[] | null;
+}
+
+/** One management-change boundary — see GET /funds/{code}/amc-periods. */
+export interface AmcBreak {
+  /** YYYY-MM-DD the new management's period starts. */
+  date: string;
+  reason: string;
+  from?: string | null;
+  to?: string | null;
+  source: "lineage" | "curated" | "manual" | "merger";
+}
+
+export interface AmcPeriods {
+  scheme_code: number;
+  current_amc: string | null;
+  first_nav_date: string | null;
+  /** Newest first. */
+  breaks: AmcBreak[];
+  /** The break the nightly "Separate Management Periods" numbers use. */
+  latest_break: string | null;
+  caveat: string | null;
 }
 
 /**
@@ -239,6 +299,8 @@ export interface BonusFund extends UniverseMetrics {
   /** See EligibleFund.continuity_reset_date. */
   continuity_reset_date?: string | null;
   continuity_reason?: string | null;
+  /** See EligibleFund.amc_breaks. */
+  amc_breaks?: AmcBreak[] | null;
 }
 
 export interface UniverseResponse {
@@ -484,6 +546,9 @@ export interface ProposalDoc {
    *  selected — see ProposalRequest. */
   since_2010?: boolean;
   separate_management?: boolean;
+  /** Per-fund scoring basis, keyed by scheme code — only funds that were
+   *  added with a start-date filter appear. Echoed back on recalculation. */
+  fund_bases?: Record<string, { start_date: string | null; include_predecessor: boolean; explicit_basis?: boolean }>;
   plan: ProposalPlan;
   swp: ProposalSwp | null; // optional — null when no withdrawal plan was added
   warnings: string[];
@@ -493,6 +558,13 @@ export interface ProposalDoc {
 export interface ProposalFundInput {
   scheme_code: number;
   allocation_pct: number;
+  /** Score this fund from this date (YYYY-MM-DD) rather than since inception
+   *  — the start-date filter / AMC period that was on screen when it was added. */
+  start_date?: string | null;
+  /** False = own-code NAVs only ("new management only"). Default true. */
+  include_predecessor?: boolean;
+  /** Use the basis above as-is, ignoring the Home-wide 2010/Management toggles. */
+  explicit_basis?: boolean;
 }
 
 export interface ProposalSwpInput {
@@ -836,14 +908,32 @@ export const api = {
    *  callers should treat that as "not available yet", not as an error to
    *  surface loudly. */
   lineage: (code: number) => get<LineageExplanation>(`/funds/${code}/lineage`),
+  /** Every management period this fund has had (AMC changes, merger
+   *  boundaries, curated breaks). Works whether or not the lineage build
+   *  has been run — see backend continuity_floor.all_breaks. */
+  amcPeriods: (code: number) => get<AmcPeriods>(`/funds/${code}/amc-periods`),
+  /** First page of the fund list with no query typed — so search screens
+   *  show funds the moment they open. Active, regular-plan funds only. */
+  browseFunds: (opts?: { offset?: number; limit?: number }) => {
+    const p = new URLSearchParams();
+    if (opts?.offset) p.set("offset", String(opts.offset));
+    if (opts?.limit) p.set("limit", String(opts.limit));
+    const qs = p.toString();
+    return getCached<{ total: number; offset: number; next_offset: number | null; results: FundSearchResult[] }>(
+      `/funds/browse${qs ? "?" + qs : ""}`, UNIVERSE_TTL_MS,
+    );
+  },
   analyze: (
     code: number,
-    opts?: { startDate?: string; refresh?: boolean; includePredecessor?: boolean },
+    opts?: { startDate?: string; refresh?: boolean; includePredecessor?: boolean; summary?: boolean },
   ) => {
     const q = new URLSearchParams();
     if (opts?.startDate) q.set("start_date", opts.startDate);
     if (opts?.refresh) q.set("refresh", "1");
     if (opts?.includePredecessor === false) q.set("include_predecessor", "0");
+    // summary=1 drops the per-window rows (most of a ~0.7 MB payload) —
+    // for callers that only need per-horizon stats, e.g. a Home card.
+    if (opts?.summary) q.set("summary", "1");
     const qs = q.toString();
     return get<FundAnalysis>(`/funds/${code}/analyze${qs ? "?" + qs : ""}`);
   },
@@ -863,10 +953,11 @@ export const api = {
     const years = Math.min(tenure, MAX_CALC_YEARS);
     let suffix = since2010 ? "&since_2010=1" : "";
     if (separateManagement) suffix += "&separate_management=1";
-    return get<UniverseResponse>(
+    return getCached<UniverseResponse>(
       mode === "lumpsum"
         ? `/lumpsum/universe?tenure=${years}${suffix}`
         : `/home/universe?years=${years}${suffix}`,
+      UNIVERSE_TTL_MS,
     );
   },
   fullRefreshStatus: () =>
@@ -893,12 +984,13 @@ export const api = {
 
   analyzeLumpsum: (
     code: number,
-    opts?: { startDate?: string; refresh?: boolean; includePredecessor?: boolean },
+    opts?: { startDate?: string; refresh?: boolean; includePredecessor?: boolean; summary?: boolean },
   ) => {
     const q = new URLSearchParams();
     if (opts?.startDate) q.set("start_date", opts.startDate);
     if (opts?.refresh) q.set("refresh", "1");
     if (opts?.includePredecessor === false) q.set("include_predecessor", "0");
+    if (opts?.summary) q.set("summary", "1");
     const qs = q.toString();
     return get<LumpsumFundAnalysis>(`/funds/${code}/analyze/lumpsum${qs ? "?" + qs : ""}`);
   },
@@ -947,8 +1039,11 @@ export const api = {
    *  other request this client makes. See PortfolioReviewScreen.uploadFile(). */
   bulkAnalysisUploadBase64: (filename: string, contentBase64: string) =>
     post<BulkAnalysisUploadResponse>("/bulk-analysis/upload-base64", { filename, content_base64: contentBase64 }),
-  bulkAnalysisProcess: (jobId: string) =>
-    post<{ status: "started" | "already_running" | "already_completed" }>(`/bulk-analysis/${jobId}/process`),
+  bulkAnalysisProcess: (jobId: string, opts?: { includeNifty50?: boolean }) =>
+    post<{ status: "started" | "already_running" | "already_completed" }>(
+      `/bulk-analysis/${jobId}/process`,
+      { include_nifty50: !!opts?.includeNifty50 },
+    ),
   bulkAnalysisStatus: (jobId: string) =>
     get<BulkAnalysisJobStatus>(`/bulk-analysis/${jobId}/status`),
   /** Absolute URL — use with expo-file-system's downloadAsync, not fetch(),
@@ -980,6 +1075,23 @@ export const api = {
   /** Absolute URL — use with FileSystem.downloadAsync (native) / window.open (web). */
   holdingReviewPdfUrl: (id: string) => buildUrl(`/portfolio-review/${id}/export.pdf`),
 
+  /** Pick-list for the overlap selectors: the app's own funds, those with a
+   *  portfolio disclosure on file first (`has_holdings`). Empty `q` = the
+   *  list shown the moment the picker opens. */
+  overlapCandidates: (q?: string) => {
+    const p = new URLSearchParams();
+    if (q && q.trim()) p.set("q", q.trim());
+    const qs = p.toString();
+    return get<{ query: string; with_holdings: number; results: OverlapCandidate[] }>(
+      `/overlap/candidates${qs ? "?" + qs : ""}`,
+    );
+  },
+  /** Store an AMC monthly portfolio disclosure workbook (base64). Each sheet
+   *  is matched to a scheme by name; unmatched sheets are reported, never guessed. */
+  overlapIngestUpload: (filename: string, contentBase64: string, period?: string) =>
+    post<OverlapIngestResult>("/overlap/ingest-upload", {
+      filename, content_base64: contentBase64, ...(period ? { period } : {}),
+    }),
   overlapCompare: (fundA: number, fundB: number, period?: string) => {
     const q = new URLSearchParams({ fund_a: String(fundA), fund_b: String(fundB) });
     if (period) q.set("period", period);
@@ -1025,6 +1137,39 @@ export interface OverlapSide {
   scheme_name: string;
   equity_count: number;
   equity_weight: number | null;
+  amc?: string | null;
+  category?: string | null;
+  headline_fqs?: number | null;
+  headline_tier?: string | null;
+  headline_horizon?: number | null;
+  /** % of net assets in the fund's ten largest equity positions. */
+  top10_weight?: number | null;
+}
+
+export interface OverlapCandidate {
+  scheme_code: number;
+  scheme_name: string;
+  has_holdings: boolean;
+  period: string | null;
+  equity_count: number | null;
+  amc: string | null;
+  category?: string | null;
+  headline_fqs?: number | null;
+}
+
+export interface OverlapUniqueHolding {
+  name: string;
+  isin: string | null;
+  /** % of the fund's net assets. */
+  weight: number;
+  weight_equity: number;
+}
+
+export interface OverlapIngestResult {
+  period: string;
+  sheets_found: number;
+  stored: { scheme_code: number; scheme_name: string; equity_count: number; period: string }[];
+  unresolved: { sheet: string | null; scheme_hint: string; equity_count: number }[];
 }
 
 export interface OverlapComparison {
@@ -1049,6 +1194,14 @@ export interface OverlapComparison {
   only_in_a: number;
   only_in_b: number;
   common: OverlapCommonHolding[];
+  /** Holdings found in only one of the two funds, largest first. */
+  unique_a?: OverlapUniqueHolding[];
+  unique_b?: OverlapUniqueHolding[];
+  /** Share of each fund (% of net assets / % of equity sleeve) held in the common stocks. */
+  common_weight_a?: number;
+  common_weight_b?: number;
+  common_weight_a_equity?: number;
+  common_weight_b_equity?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -1090,4 +1243,21 @@ export interface BulkAnalysisJobStatus {
    *  can be shown directly on the summary card instead of hunting through
    *  the downloaded Excel's "Fund not found" rows. */
   not_found_funds?: BulkAnalysisUnmatchedFund[];
+  /** Present when the job ran with the Nifty 50 benchmark row. */
+  benchmark?: BulkBenchmark | null;
+}
+
+export interface BulkBenchmark {
+  status: "ok" | "unavailable";
+  label: string;
+  scheme_code?: number;
+  /** The Nifty 50 index fund whose NAV stands in for the index. */
+  proxy_name?: string;
+  horizon?: number | null;
+  fqs?: number | null;
+  success_pct?: number | null;
+  xirr_med?: number | null;
+  p10_xirr?: number | null;
+  median_wm?: number | null;
+  reason?: string;
 }

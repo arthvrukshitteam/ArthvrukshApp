@@ -1,3 +1,11 @@
+/**
+ * Fund Search — drawer destination (moved out of the bottom bar).
+ *
+ * Opens straight onto a browsable list of the app's funds (best headline FQS
+ * first) so there is something to tap before anything is typed; typing 2+
+ * characters switches to the full AMFI search, which also finds historical
+ * names, old scheme codes and ISINs.
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
@@ -14,12 +22,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Search, X, ChevronRight, Database, Clock, TrendingUp, Star, Zap } from "lucide-react-native";
-import { api, type RecentFund, type FullRefreshStatus, type FundSearchResult } from "@/src/api";
+import { Search, X, ChevronRight, Database, Clock, TrendingUp, Star, Zap, LayoutList } from "lucide-react-native";
+import { api, invalidateApiCache, type RecentFund, type FullRefreshStatus, type FundSearchResult } from "@/src/api";
 import { radii, space, type ThemeColors, type ThemeType } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
 import { useTenure } from "@/src/TenureProvider";
-import { BrandLogo } from "@/src/components/BrandLogo";
+import { DrawerMenuButton } from "@/src/components/DrawerMenuButton";
+
+const BROWSE_PAGE = 40;
+const RECENT_SHOWN = 5;
+
+type BrowseRow = FundSearchResult & { category?: string | null; headline_fqs?: number | null; headline_tier?: string | null };
 
 // ── main screen ──────────────────────────────────────────────────────────────
 
@@ -32,17 +45,25 @@ export default function FundsScreen() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<FundSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState(false);
   const [recent, setRecent] = useState<RecentFund[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshStatus, setRefreshStatus] = useState<FullRefreshStatus | null>(null);
   const [searchFocused, setSearchFocused] = useState(false);
+
+  const [browse, setBrowse] = useState<BrowseRow[]>([]);
+  const [browseNext, setBrowseNext] = useState<number | null>(0);
+  const [browseLoading, setBrowseLoading] = useState(true);
+  const [browseError, setBrowseError] = useState<string | null>(null);
+  const loadingMore = useRef(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeq = useRef(0);
 
   const loadRecent = useCallback(async () => {
     try {
       const [recentRes, statusRes] = await Promise.all([
         api.recent(),
-        api.fullRefreshStatus(),   // new combined endpoint
+        api.fullRefreshStatus(),
       ]);
       setRecent(recentRes.results);
       setRefreshStatus(statusRes);
@@ -51,25 +72,64 @@ export default function FundsScreen() {
     }
   }, []);
 
-  useEffect(() => { loadRecent(); }, [loadRecent]);
+  const loadBrowse = useCallback(async (reset: boolean) => {
+    if (loadingMore.current) return;
+    const offset = reset ? 0 : browseNext;
+    if (offset == null) return;
+    loadingMore.current = true;
+    if (reset) setBrowseLoading(true);
+    try {
+      const page = await api.browseFunds({ offset, limit: BROWSE_PAGE });
+      setBrowse((prev) => {
+        const base = reset ? [] : prev;
+        const seen = new Set(base.map((r) => r.scheme_code));
+        return [...base, ...(page.results as BrowseRow[]).filter((r) => !seen.has(r.scheme_code))];
+      });
+      setBrowseNext(page.next_offset);
+      setBrowseError(null);
+    } catch {
+      if (reset) setBrowseError("Couldn't load the fund list. Pull down to retry, or search by name.");
+    } finally {
+      loadingMore.current = false;
+      setBrowseLoading(false);
+    }
+  }, [browseNext]);
+
+  useEffect(() => {
+    loadRecent();
+    loadBrowse(true);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (debounce.current) clearTimeout(debounce.current);
     const q = query.trim();
-    if (q.length < 2) { setResults([]); setSearching(false); return; }
+    if (q.length < 2) { setResults([]); setSearching(false); setSearchError(false); return; }
     setSearching(true);
+    const seq = ++searchSeq.current;
     debounce.current = setTimeout(async () => {
-      try { setResults((await api.search(q)).results); }
-      catch { setResults([]); }
-      finally { setSearching(false); }
+      try {
+        const r = (await api.search(q)).results;
+        if (seq === searchSeq.current) { setResults(r); setSearchError(false); }
+      } catch {
+        if (seq === searchSeq.current) { setResults([]); setSearchError(true); }
+      } finally {
+        if (seq === searchSeq.current) setSearching(false);
+      }
     }, 280);
+    return () => { if (debounce.current) clearTimeout(debounce.current); };
   }, [query]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadRecent();
+    invalidateApiCache("/funds/browse");
+    await Promise.all([loadRecent(), loadBrowse(true)]);
     setRefreshing(false);
-  }, [loadRecent]);
+  }, [loadRecent, loadBrowse]);
+
+  const openFund = useCallback(
+    (code: number) => router.push(`/fund/${code}${tenure ? `?horizon=${tenure}` : ""}` as any),
+    [router, tenure],
+  );
 
   const showSearch = query.trim().length >= 2;
 
@@ -81,16 +141,15 @@ export default function FundsScreen() {
       >
         {/* Navbar */}
         <View style={styles.navbar}>
-          <BrandLogo size={100} style={styles.navLogo} />
+          <DrawerMenuButton />
           <View style={styles.navText}>
-            <Text style={styles.navBrand}>ArthVruksh</Text>
-            <Text style={styles.navSub}>FQS Model</Text>
+            <Text style={styles.navBrand}>Fund Search</Text>
+            <Text style={styles.navSub}>Analyse any fund</Text>
           </View>
         </View>
 
         {/* Search section */}
         <View style={styles.searchSection}>
-          <Text style={styles.pageLabel}>Analyse a Fund · AMFI schemes, duplicate listings merged</Text>
           <View style={[
             styles.searchWrap,
             searchFocused && { borderColor: colors.azure, shadowColor: colors.azure, shadowOpacity: 0.18, elevation: 8 },
@@ -98,7 +157,7 @@ export default function FundsScreen() {
             <Search size={18} color={searchFocused ? colors.azure : colors.textTer} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by fund name or scheme code…"
+              placeholder="Search by fund name, scheme code or ISIN…"
               placeholderTextColor={colors.textTer}
               value={query}
               onChangeText={setQuery}
@@ -108,80 +167,149 @@ export default function FundsScreen() {
               autoCapitalize="none"
               returnKeyType="search"
               onSubmitEditing={() => Keyboard.dismiss()}
+              accessibilityLabel="Search funds"
             />
             {query.length > 0 && (
-              <Pressable onPress={() => setQuery("")} hitSlop={12}>
+              <Pressable onPress={() => setQuery("")} hitSlop={12} accessibilityLabel="Clear search">
                 <X size={16} color={colors.textTer} />
               </Pressable>
             )}
           </View>
+          <Text style={styles.pageLabel}>
+            {showSearch
+              ? "Searching every AMFI scheme · duplicate listings merged"
+              : "Browse the funds below, or type 2+ letters to search"}
+          </Text>
         </View>
 
         {/* Content */}
         {showSearch ? (
           <SearchResults
             loading={searching}
+            error={searchError}
             results={results}
-            onPick={(c) =>
-              router.push(
-                `/fund/${c}${tenure ? `?horizon=${tenure}` : ""}` as any
-              )
-            }
+            onPick={openFund}
             colors={colors}
             type={type}
             styles={styles}
           />
         ) : (
           <FlatList
-            data={recent}
+            data={browse}
             keyExtractor={(it) => String(it.scheme_code)}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            initialNumToRender={12}
+            onEndReachedThreshold={0.4}
+            onEndReached={() => { if (!browseLoading && browseNext != null) loadBrowse(false); }}
             ListHeaderComponent={
               <View>
-                {/* Dual refresh status card */}
                 {refreshStatus && (
                   <RefreshStatusCard status={refreshStatus} colors={colors} type={type} styles={styles} />
                 )}
+                {recent.length > 0 && (
+                  <>
+                    <View style={styles.sectionHeader}>
+                      <TrendingUp size={13} color={colors.textTer} />
+                      <Text style={[type.label, { color: colors.textTer, marginLeft: 6 }]}>
+                        RECENTLY ANALYSED
+                      </Text>
+                    </View>
+                    {recent.slice(0, RECENT_SHOWN).map((item) => (
+                      <RecentRow
+                        key={`r-${item.scheme_code}`}
+                        fund={item}
+                        colors={colors}
+                        type={type}
+                        styles={styles}
+                        tierColor={tierColor}
+                        onPress={() => openFund(item.scheme_code)}
+                      />
+                    ))}
+                  </>
+                )}
                 <View style={styles.sectionHeader}>
-                  <TrendingUp size={13} color={colors.textTer} />
+                  <LayoutList size={13} color={colors.textTer} />
                   <Text style={[type.label, { color: colors.textTer, marginLeft: 6 }]}>
-                    RECENTLY ANALYSED
+                    ALL FUNDS · BEST FQS FIRST
                   </Text>
                 </View>
               </View>
             }
             renderItem={({ item }) => (
-              <RecentRow
+              <BrowseRowView
                 fund={item}
-                colors={colors}
-                type={type}
                 styles={styles}
+                colors={colors}
                 tierColor={tierColor}
-                onPress={() =>
-                  router.push(
-                    `/fund/${item.scheme_code}${tenure ? `?horizon=${tenure}` : ""}` as any
-                  )
-                }
+                onPress={() => openFund(item.scheme_code)}
               />
             )}
             refreshControl={
               <RefreshControl tintColor={colors.azure} refreshing={refreshing} onRefresh={onRefresh} />
             }
             ListEmptyComponent={
-              <View style={styles.emptyWrap}>
-                <Database size={32} color={colors.textTer} />
-                <Text style={[type.body, { color: colors.textSec, marginTop: 14, textAlign: "center", fontWeight: "600" }]}>
-                  No funds analysed yet
-                </Text>
-                <Text style={[type.bodySm, { color: colors.textTer, marginTop: 6, textAlign: "center", maxWidth: 240 }]}>
-                  Search for any mutual fund above to get started.
-                </Text>
-              </View>
+              browseLoading ? (
+                <View style={styles.emptyWrap}>
+                  <ActivityIndicator color={colors.azure} />
+                  <Text style={[type.bodySm, { color: colors.textTer, marginTop: 10 }]}>Loading funds…</Text>
+                </View>
+              ) : (
+                <View style={styles.emptyWrap}>
+                  <Database size={32} color={colors.textTer} />
+                  <Text style={[type.body, { color: colors.textSec, marginTop: 14, textAlign: "center", fontWeight: "600" }]}>
+                    {browseError ?? "No funds in the index yet"}
+                  </Text>
+                  <Text style={[type.bodySm, { color: colors.textTer, marginTop: 6, textAlign: "center", maxWidth: 260 }]}>
+                    You can still search any AMFI scheme by name above.
+                  </Text>
+                </View>
+              )
+            }
+            ListFooterComponent={
+              browse.length > 0 && browseNext != null ? (
+                <View style={{ paddingVertical: space.md, alignItems: "center" }}>
+                  <ActivityIndicator color={colors.azure} />
+                </View>
+              ) : null
             }
             contentContainerStyle={{ paddingBottom: 40 }}
           />
         )}
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function BrowseRowView({
+  fund, styles, colors, tierColor, onPress,
+}: {
+  fund: BrowseRow;
+  styles: ReturnType<typeof makeStyles>;
+  colors: ThemeColors;
+  tierColor: (tier: string | null) => string;
+  onPress: () => void;
+}) {
+  const tCol = tierColor(fund.headline_tier ?? null);
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.rowName} numberOfLines={2}>{fund.scheme_name}</Text>
+        <View style={styles.rowMeta}>
+          {fund.category ? (
+            <View style={styles.chip}><Text style={styles.chipText}>{fund.category}</Text></View>
+          ) : null}
+          <Text style={styles.metaText}>#{fund.scheme_code}</Text>
+        </View>
+      </View>
+      {fund.headline_fqs != null ? (
+        <View style={[styles.scorePill, { borderColor: tCol, backgroundColor: `${tCol}22` }]}>
+          <Text style={[styles.scoreVal, { color: tCol }]}>{fund.headline_fqs.toFixed(0)}</Text>
+          <Text style={[styles.scoreTier, { color: tCol }]}>{(fund.headline_tier ?? "").toUpperCase()}</Text>
+        </View>
+      ) : null}
+      <ChevronRight size={16} color={colors.textTer} style={{ marginLeft: 6 }} />
+    </Pressable>
   );
 }
 
@@ -294,9 +422,10 @@ function RecentRow({
 // ── SearchResults ─────────────────────────────────────────────────────────────
 
 function SearchResults({
-  loading, results, onPick, colors, type, styles,
+  loading, error = false, results, onPick, colors, type, styles,
 }: {
   loading: boolean;
+  error?: boolean;
   results: FundSearchResult[];
   onPick: (c: number) => void;
   colors: ThemeColors;
@@ -311,7 +440,7 @@ function SearchResults({
       <View style={styles.emptyWrap}>
         <Search size={28} color={colors.textTer} />
         <Text style={[type.bodySm, { color: colors.textSec, marginTop: 12, textAlign: "center" }]}>
-          No matching schemes. Try fewer keywords.
+          {error ? "Search failed — check your connection and try again." : "No matching schemes. Try fewer keywords."}
         </Text>
       </View>
     );
@@ -321,6 +450,7 @@ function SearchResults({
       data={results}
       keyExtractor={(it) => String(it.scheme_code)}
       keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
       contentContainerStyle={{ paddingBottom: 40 }}
       renderItem={({ item }) => (
         <Pressable
@@ -378,7 +508,6 @@ function makeStyles(colors: ThemeColors, type: ThemeType) {
       borderBottomColor: colors.border,
       gap: space.sm,
     },
-    navLogo: { marginBottom: 0 },
     navText: { flexDirection: "column", justifyContent: "center" },
     navBrand: {
       fontSize: 17,
@@ -405,7 +534,7 @@ function makeStyles(colors: ThemeColors, type: ThemeType) {
       fontSize: 12,
       fontWeight: "500",
       color: colors.textTer,
-      marginBottom: space.sm,
+      marginTop: space.sm,
       letterSpacing: 0.1,
     },
     searchWrap: {
