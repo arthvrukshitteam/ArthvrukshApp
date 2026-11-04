@@ -14,7 +14,6 @@
     },
     "android": {
       "package": "com.arthvruksh.mfanalyst",
-      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#F8F8F8"
@@ -28,15 +27,13 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-image.png",
-          "imageWidth": 220,
-          "resizeMode": "contain",
-          "backgroundColor": "#F8F8F8"
-        }
-      ]
+      "expo-font",
+      "expo-image",
+      "expo-secure-store",
+      "expo-sharing",
+      "expo-splash-screen",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true

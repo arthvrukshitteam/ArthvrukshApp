@@ -66,7 +66,7 @@ def test_classify_with_amfi_category(name, amfi_cat, expected):
     ("Kotak Gold Fund",                 "Gold/Silver"),
     ("HDFC Balanced Advantage Fund",    "Hybrid"),
     ("Axis Liquid Fund",                "Debt"),
-    ("Anonymous Equity Fund",           "Flexi Cap"),   # default fallback
+    ("Anonymous Equity Fund",           "Misc Fund"),   # default fallback (DEFAULT_CATEGORY)
 ])
 def test_classify_without_amfi_category(name, expected):
     assert classify_fund(name, "") == expected

@@ -1,0 +1,143 @@
+{
+  "rank_quality": [
+    {
+      "metric": "blended_wm",
+      "direction": "higher is better",
+      "role": "MODEL \u2014 the app's actual rank metric",
+      "n_cutoffs": 25,
+      "n_observations": 265,
+      "mean_rho": 0.016,
+      "nw_se": 0.1301,
+      "t_stat": 0.12,
+      "pct_cutoffs_positive": 0.44,
+      "independent_periods": 2.0,
+      "verdict": "not interpretable \u2014 too few independent periods"
+    },
+    {
+      "metric": "fqs",
+      "direction": "higher is better",
+      "role": "MODEL \u2014 headline score",
+      "n_cutoffs": 25,
+      "n_observations": 265,
+      "mean_rho": -0.2148,
+      "nw_se": 0.0987,
+      "t_stat": -2.18,
+      "pct_cutoffs_positive": 0.24,
+      "independent_periods": 2.0,
+      "verdict": "not interpretable \u2014 too few independent periods"
+    },
+    {
+      "metric": "median_wm",
+      "direction": "higher is better",
+      "role": "component",
+      "n_cutoffs": 25,
+      "n_observations": 265,
+      "mean_rho": 0.0471,
+      "nw_se": 0.1322,
+      "t_stat": 0.36,
+      "pct_cutoffs_positive": 0.44,
+      "independent_periods": 2.0,
+      "verdict": "not interpretable \u2014 too few independent periods"
+    },
+    {
+      "metric": "p10_wm",
+      "direction": "higher is better",
+      "role": "component",
+      "n_cutoffs": 25,
+      "n_observations": 265,
+      "mean_rho": -0.0879,
+      "nw_se": 0.1183,
+      "t_stat": -0.74,
+      "pct_cutoffs_positive": 0.4,
+      "independent_periods": 2.0,
+      "verdict": "not interpretable \u2014 too few independent periods"
+    },
+    {
+      "metric": "success_pct",
+      "direction": "higher is better",
+      "role": "component",
+      "n_cutoffs": 25,
+      "n_observations": 265,
+      "mean_rho": -0.2178,
+      "nw_se": 0.0888,
+      "t_stat": -2.45,
+      "pct_cutoffs_positive": 0.24,
+      "independent_periods": 2.0,
+      "verdict": "not interpretable \u2014 too few independent periods"
+    },
+    {
+      "metric": "cv",
+      "direction": "LOWER is better",
+      "role": "component",
+      "n_cutoffs": 25,
+      "n_observations": 265,
+      "mean_rho": -0.0541,
+      "nw_se": 0.1326,
+      "t_stat": -0.41,
+      "pct_cutoffs_positive": 0.44,
+      "independent_periods": 2.0,
+      "verdict": "not interpretable \u2014 too few independent periods"
+    },
+    {
+      "metric": "trailing_wm",
+      "direction": "higher is better",
+      "role": "BASELINE \u2014 single most recent window",
+      "n_cutoffs": 25,
+      "n_observations": 265,
+      "mean_rho": 0.0029,
+      "nw_se": 0.0704,
+      "t_stat": 0.04,
+      "pct_cutoffs_positive": 0.4,
+      "independent_periods": 2.0,
+      "verdict": "not interpretable \u2014 too few independent periods"
+    }
+  ],
+  "selection_accuracy": {
+    "model_blended_wm": {
+      "n_cutoffs": 25,
+      "picked_the_actual_winner": 0.12,
+      "top5pct_pick_landed_top5pct": 0.12,
+      "top10pct_hit_rate": 0.12,
+      "top20pct_hit_rate": 0.08,
+      "mean_percentile_of_top10pct_picks": 0.439
+    },
+    "model_fqs": {
+      "n_cutoffs": 25,
+      "picked_the_actual_winner": 0.12,
+      "top5pct_pick_landed_top5pct": 0.12,
+      "top10pct_hit_rate": 0.12,
+      "top20pct_hit_rate": 0.08,
+      "mean_percentile_of_top10pct_picks": 0.4899
+    },
+    "baseline_trailing_wm": {
+      "n_cutoffs": 25,
+      "picked_the_actual_winner": 0.16,
+      "top5pct_pick_landed_top5pct": 0.16,
+      "top10pct_hit_rate": 0.16,
+      "top20pct_hit_rate": 0.12,
+      "mean_percentile_of_top10pct_picks": 0.5455
+    },
+    "baseline_random": {
+      "picked_the_actual_winner": 0.097,
+      "top10pct_hit_rate": 0.1,
+      "top20pct_hit_rate": 0.2,
+      "mean_percentile_of_top10pct_picks": 0.5,
+      "note": "what pure chance gives \u2014 every model number must beat this"
+    },
+    "_meta": {
+      "n_cutoffs": 26,
+      "mean_funds_per_cutoff": 10.3,
+      "independent_periods": 2.04
+    }
+  },
+  "wealth_accuracy": {
+    "n": 268,
+    "mean_predicted_wm": 1.3238,
+    "mean_actual_wm": 1.1727,
+    "mean_error_wm": -0.1511,
+    "median_error_wm": -0.1321,
+    "mean_abs_pct_error": 0.1239,
+    "pct_actual_above_p10": 0.6455,
+    "note": "p10_wm is sold as a downside case; if 'pct_actual_above_p10' is far from ~0.90 the downside estimate is miscalibrated"
+  }
+}

@@ -1,0 +1,358 @@
+{
+  "113177": {
+    "scheme_code": 113177,
+    "historical": {
+      "fund_name": "Nippon India Small Cap Fund - Growth Plan - Growth Option",
+      "category": "Small Cap",
+      "amfi_category": "Equity Scheme - Small Cap Fund",
+      "fund_inception_date": "2010-09-21",
+      "prediction_date": "2021-07-31",
+      "historical_nav_period": "2010-09-21 to 2021-07-31",
+      "total_historical_nav_count": 2673,
+      "monthly_points": 131,
+      "n_rolling_windows": 70,
+      "available_history_years": 10.83,
+      "required_history_years": 7,
+      "eligible": true,
+      "wm": 1.8621,
+      "median_wm": 1.8621,
+      "blended_wm": 1.5821,
+      "cv": 0.2748,
+      "success_pct": 0.6143,
+      "fqs": 59.3,
+      "fqs_tier": "Weak",
+      "fund_rank": 2,
+      "total_eligible_funds": 164,
+      "recommendation": "Not recommended (rank #2 by Blended WM)",
+      "benchmark": {
+        "benchmark_type": "Category minimum-WM hurdle (no benchmark FUND exists in production)",
+        "benchmark_wm": 1.56,
+        "benchmark_source": "category_map.CATEGORY_TABLE",
+        "benchmark_median_wm": null,
+        "benchmark_blended_wm": null,
+        "benchmark_cv": null,
+        "benchmark_success_pct": null,
+        "not_applicable_note": "category_map.CATEGORY_TABLE defines a single numeric WM hurdle per category/horizon, not a benchmark fund \u2014 Median/Blended WM, CV, and Success % are properties of a FUND's window distribution and have no equivalent for a constant threshold.",
+        "cleared": true
+      }
+    },
+    "predicted": {
+      "prediction_generated_on": "2021-07-31",
+      "prediction_date": "2021-07-31",
+      "predicted_rolling_period": "2021-08-01 to 2026-07-31",
+      "wm": 1.8621,
+      "median_wm": 1.8621,
+      "blended_wm": 1.5821,
+      "cv": 0.2748,
+      "success_pct": 0.6143,
+      "fqs": 59.3,
+      "fqs_tier": "Weak",
+      "fund_rank": 2,
+      "total_eligible_funds": 164,
+      "recommendation": "Not recommended (rank #2 by Blended WM)",
+      "benchmark": {
+        "benchmark_type": "Category minimum-WM hurdle (no benchmark FUND exists in production)",
+        "benchmark_wm": 1.56,
+        "benchmark_source": "category_map.CATEGORY_TABLE",
+        "benchmark_median_wm": null,
+        "benchmark_blended_wm": null,
+        "benchmark_cv": null,
+        "benchmark_success_pct": null,
+        "not_applicable_note": "category_map.CATEGORY_TABLE defines a single numeric WM hurdle per category/horizon, not a benchmark fund \u2014 Median/Blended WM, CV, and Success % are properties of a FUND's window distribution and have no equivalent for a constant threshold.",
+        "cleared": true
+      }
+    },
+    "actual": {
+      "actual_validation_duration": "2021-08-01 to 2026-07-31",
+      "total_validation_nav_count": 1231,
+      "accumulated_nav_count_at_future_cutoff": 3904,
+      "wm_single_realised_outcome": 1.4997993251088195,
+      "wm": 1.9447,
+      "median_wm": 1.9447,
+      "blended_wm": 1.6487,
+      "cv": 0.2384,
+      "success_pct": 0.7385,
+      "fqs": 67.2,
+      "fqs_tier": "Average",
+      "fund_rank": 12,
+      "total_funds_validated_at_cutoff": 150,
+      "recommendation": "Actual rank #12 of 150 validated",
+      "benchmark": {
+        "benchmark_type": "Category minimum-WM hurdle (no benchmark FUND exists in production)",
+        "benchmark_wm": 1.56,
+        "benchmark_source": "category_map.CATEGORY_TABLE",
+        "benchmark_median_wm": null,
+        "benchmark_blended_wm": null,
+        "benchmark_cv": null,
+        "benchmark_success_pct": null,
+        "not_applicable_note": "category_map.CATEGORY_TABLE defines a single numeric WM hurdle per category/horizon, not a benchmark fund \u2014 Median/Blended WM, CV, and Success % are properties of a FUND's window distribution and have no equivalent for a constant threshold.",
+        "cleared": true
+      },
+      "actual_xirr": 0.15578460250437073,
+      "actual_wealth": 899879.6
+    },
+    "comparison": {
+      "validation_period": "2021-08-01 to 2026-07-31",
+      "wm": {
+        "predicted": 1.8621,
+        "actual": 1.4997993251088195,
+        "abs_diff": -0.36230067489118056,
+        "pct_diff": -0.19456563819944178,
+        "accuracy_pct": 0.8054343618005582,
+        "match": false
+      },
+      "median_wm": {
+        "predicted": 1.8621,
+        "actual": 1.9447,
+        "abs_diff": 0.0826,
+        "pct_diff": 0.044358519950593416,
+        "accuracy_pct": 0.9556414800494066,
+        "match": false
+      },
+      "blended_wm": {
+        "predicted": 1.5821,
+        "actual": 1.6487,
+        "abs_diff": 0.06659999999999999,
+        "pct_diff": 0.04209594842298211,
+        "accuracy_pct": 0.9579040515770179,
+        "match": false
+      },
+      "cv": {
+        "predicted": 0.2748,
+        "actual": 0.2384,
+        "abs_diff": -0.03639999999999999,
+        "pct_diff": -0.13245997088791844,
+        "accuracy_pct": 0.8675400291120816,
+        "match": false
+      },
+      "success_pct": {
+        "predicted": 0.6143,
+        "actual": 0.7385,
+        "abs_diff": 0.12420000000000009,
+        "pct_diff": 0.2021813446198927,
+        "accuracy_pct": 0.7978186553801073,
+        "match": false
+      },
+      "fqs": {
+        "predicted": 59.3,
+        "actual": 67.2,
+        "abs_diff": 7.900000000000006,
+        "pct_diff": 0.13322091062394614,
+        "accuracy_pct": 0.8667790893760539,
+        "match": false
+      },
+      "benchmark_wm": {
+        "predicted": 1.56,
+        "actual": 1.56,
+        "abs_diff": 0.0,
+        "pct_diff": 0.0,
+        "accuracy_pct": 1.0,
+        "match": true
+      },
+      "fund_rank": {
+        "predicted": 2,
+        "predicted_of": 164,
+        "actual": 12,
+        "actual_of": 150,
+        "abs_diff": 10
+      },
+      "recommendation": {
+        "predicted": "Not recommended (rank #2 by Blended WM)",
+        "actual": "Actual rank #12 of 150 validated",
+        "match": true
+      },
+      "benchmark_cleared": {
+        "predicted": true,
+        "actual": true,
+        "match": true
+      }
+    },
+    "checklist_evidence": {
+      "prediction_date_source": "max(cutoff_date) in backtest_comparison.parquet for this scheme_code \u2014 dynamically derived, not hardcoded",
+      "future_cutoff_source": "prediction_date + horizon_years via pandas DateOffset \u2014 dynamically derived, not hardcoded",
+      "eligibility_source": "backtest/eligibility.py assess(), which reuses server.py's own history_years >= horizon + HISTORY_BUFFER_YEARS rule",
+      "wm_source": "backend/fqs_engine.py score_horizon() via backtest/model_adapter.py predict()",
+      "benchmark_source": "category_map.CATEGORY_TABLE",
+      "ranking_source": "backtest/backtest_engine.py rank() [predicted] / rank_actuals() [actual]",
+      "actual_outcome_source": "backtest/actual_outcomes.py realise()"
+    }
+  },
+  "112932": {
+    "scheme_code": 112932,
+    "historical": {
+      "fund_name": "Mirae Asset Large & Midcap Fund - Regular Plan - Growth",
+      "category": "Large Cap",
+      "amfi_category": "Equity Scheme - Large & Mid Cap Fund",
+      "fund_inception_date": "2010-07-12",
+      "prediction_date": "2021-07-31",
+      "historical_nav_period": "2010-07-12 to 2021-07-31",
+      "total_historical_nav_count": 2724,
+      "monthly_points": 133,
+      "n_rolling_windows": 72,
+      "available_history_years": 11.0,
+      "required_history_years": 7,
+      "eligible": true,
+      "wm": 1.7793,
+      "median_wm": 1.7793,
+      "blended_wm": 1.602,
+      "cv": 0.1982,
+      "success_pct": 0.8611,
+      "fqs": 81.8,
+      "fqs_tier": "Strong",
+      "fund_rank": 1,
+      "total_eligible_funds": 164,
+      "recommendation": "Recommended (rank #1 by Blended WM)",
+      "benchmark": {
+        "benchmark_type": "Category minimum-WM hurdle (no benchmark FUND exists in production)",
+        "benchmark_wm": 1.3617,
+        "benchmark_source": "category_map.CATEGORY_TABLE",
+        "benchmark_median_wm": null,
+        "benchmark_blended_wm": null,
+        "benchmark_cv": null,
+        "benchmark_success_pct": null,
+        "not_applicable_note": "category_map.CATEGORY_TABLE defines a single numeric WM hurdle per category/horizon, not a benchmark fund \u2014 Median/Blended WM, CV, and Success % are properties of a FUND's window distribution and have no equivalent for a constant threshold.",
+        "cleared": true
+      }
+    },
+    "predicted": {
+      "prediction_generated_on": "2021-07-31",
+      "prediction_date": "2021-07-31",
+      "predicted_rolling_period": "2021-08-01 to 2026-07-31",
+      "wm": 1.7793,
+      "median_wm": 1.7793,
+      "blended_wm": 1.602,
+      "cv": 0.1982,
+      "success_pct": 0.8611,
+      "fqs": 81.8,
+      "fqs_tier": "Strong",
+      "fund_rank": 1,
+      "total_eligible_funds": 164,
+      "recommendation": "Recommended (rank #1 by Blended WM)",
+      "benchmark": {
+        "benchmark_type": "Category minimum-WM hurdle (no benchmark FUND exists in production)",
+        "benchmark_wm": 1.3617,
+        "benchmark_source": "category_map.CATEGORY_TABLE",
+        "benchmark_median_wm": null,
+        "benchmark_blended_wm": null,
+        "benchmark_cv": null,
+        "benchmark_success_pct": null,
+        "not_applicable_note": "category_map.CATEGORY_TABLE defines a single numeric WM hurdle per category/horizon, not a benchmark fund \u2014 Median/Blended WM, CV, and Success % are properties of a FUND's window distribution and have no equivalent for a constant threshold.",
+        "cleared": true
+      }
+    },
+    "actual": {
+      "actual_validation_duration": "2021-08-01 to 2026-07-31",
+      "total_validation_nav_count": 1231,
+      "accumulated_nav_count_at_future_cutoff": 3955,
+      "wm_single_realised_outcome": 1.3389013411973036,
+      "wm": 1.6301,
+      "median_wm": 1.6301,
+      "blended_wm": 1.5147,
+      "cv": 0.1773,
+      "success_pct": 0.8864,
+      "fqs": 82.4,
+      "fqs_tier": "Strong",
+      "fund_rank": 62,
+      "total_funds_validated_at_cutoff": 150,
+      "recommendation": "Actual rank #62 of 150 validated",
+      "benchmark": {
+        "benchmark_type": "Category minimum-WM hurdle (no benchmark FUND exists in production)",
+        "benchmark_wm": 1.3617,
+        "benchmark_source": "category_map.CATEGORY_TABLE",
+        "benchmark_median_wm": null,
+        "benchmark_blended_wm": null,
+        "benchmark_cv": null,
+        "benchmark_success_pct": null,
+        "not_applicable_note": "category_map.CATEGORY_TABLE defines a single numeric WM hurdle per category/horizon, not a benchmark fund \u2014 Median/Blended WM, CV, and Success % are properties of a FUND's window distribution and have no equivalent for a constant threshold.",
+        "cleared": true
+      },
+      "actual_xirr": 0.113831965878315,
+      "actual_wealth": 803340.8
+    },
+    "comparison": {
+      "validation_period": "2021-08-01 to 2026-07-31",
+      "wm": {
+        "predicted": 1.7793,
+        "actual": 1.3389013411973036,
+        "abs_diff": -0.44039865880269646,
+        "pct_diff": -0.24751231315837488,
+        "accuracy_pct": 0.7524876868416251,
+        "match": false
+      },
+      "median_wm": {
+        "predicted": 1.7793,
+        "actual": 1.6301,
+        "abs_diff": -0.1492,
+        "pct_diff": -0.08385320069690327,
+        "accuracy_pct": 0.9161467993030967,
+        "match": false
+      },
+      "blended_wm": {
+        "predicted": 1.602,
+        "actual": 1.5147,
+        "abs_diff": -0.08730000000000016,
+        "pct_diff": -0.054494382022472004,
+        "accuracy_pct": 0.945505617977528,
+        "match": false
+      },
+      "cv": {
+        "predicted": 0.1982,
+        "actual": 0.1773,
+        "abs_diff": -0.020899999999999974,
+        "pct_diff": -0.10544904137235103,
+        "accuracy_pct": 0.894550958627649,
+        "match": false
+      },
+      "success_pct": {
+        "predicted": 0.8611,
+        "actual": 0.8864,
+        "abs_diff": 0.02529999999999999,
+        "pct_diff": 0.02938102427128091,
+        "accuracy_pct": 0.9706189757287191,
+        "match": false
+      },
+      "fqs": {
+        "predicted": 81.8,
+        "actual": 82.4,
+        "abs_diff": 0.6000000000000085,
+        "pct_diff": 0.007334963325183479,
+        "accuracy_pct": 0.9926650366748165,
+        "match": false
+      },
+      "benchmark_wm": {
+        "predicted": 1.3617,
+        "actual": 1.3617,
+        "abs_diff": 0.0,
+        "pct_diff": 0.0,
+        "accuracy_pct": 1.0,
+        "match": true
+      },
+      "fund_rank": {
+        "predicted": 1,
+        "predicted_of": 164,
+        "actual": 62,
+        "actual_of": 150,
+        "abs_diff": 61
+      },
+      "recommendation": {
+        "predicted": "Recommended (rank #1 by Blended WM)",
+        "actual": "Actual rank #62 of 150 validated",
+        "match": false
+      },
+      "benchmark_cleared": {
+        "predicted": true,
+        "actual": true,
+        "match": true
+      }
+    },
+    "checklist_evidence": {
+      "prediction_date_source": "max(cutoff_date) in backtest_comparison.parquet for this scheme_code \u2014 dynamically derived, not hardcoded",
+      "future_cutoff_source": "prediction_date + horizon_years via pandas DateOffset \u2014 dynamically derived, not hardcoded",
+      "eligibility_source": "backtest/eligibility.py assess(), which reuses server.py's own history_years >= horizon + HISTORY_BUFFER_YEARS rule",
+      "wm_source": "backend/fqs_engine.py score_horizon() via backtest/model_adapter.py predict()",
+      "benchmark_source": "category_map.CATEGORY_TABLE",
+      "ranking_source": "backtest/backtest_engine.py rank() [predicted] / rank_actuals() [actual]",
+      "actual_outcome_source": "backtest/actual_outcomes.py realise()"
+    }
+  }
+}

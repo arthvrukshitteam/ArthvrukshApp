@@ -12,6 +12,18 @@ pyxirr==0.10.8
 python-dotenv==1.0.1
 pydantic==2.6.4
 
+# Portfolio Proposal feature — XLSX/PDF export
+openpyxl==3.1.5
+reportlab==4.2.5
+
+# Bulk Fund Analysis feature — Excel upload
+python-multipart==0.0.9  # required by FastAPI's UploadFile/File() multipart parsing
+xlrd==2.0.1               # legacy .xls reader — openpyxl only handles .xlsx
+
+# Portfolio Holding Review — read previous proposal PDFs (text/tables + metadata)
+pdfplumber==0.11.10
+pypdf==6.19.0
+
 # Test-only (Render won't install dev unless used; harmless to keep)
 pytest==8.1.1
 requests==2.31.0

@@ -1,3 +1,10 @@
+> ⚠️ **HISTORICAL — describes the original 3-screen MVP (`main` branch).** Verified out of date on 2026-10-07 against `version2`:
+> * Scope is far larger now (Home universe, Rolling, Portfolio Review, Overlap, Proposals, lumpsum mode, lineage…) — see `docs/features/feature-inventory.md`.
+> * **FQS weights below are wrong for the live code.** Live (`fqs_engine.score_horizon`): equity Success .30 / Adj-Risk .20 / Blended-WM .20 / Consistency .15 / Downside .10 / ES .05; non-equity .25 / .35 / .15 / .10 / .10 / .05. (`MODEL_AUDIT.md` is the authoritative spec.)
+> * Horizons are 1Y–**50Y** (not 20Y); the nightly refresh covers the whole indexed universe, not just recently viewed funds.
+> * `fund_analysis` cache logic is as described; "Methodology tab" is now in the drawer.
+> Kept for product-intent context only; do not use it as a technical source.
+
 # MF Analyst — PRD
 
 ## Vision

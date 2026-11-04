@@ -1,0 +1,34 @@
+{
+  "n_cutoffs": 51,
+  "first_cutoff": "2022-04-30",
+  "last_cutoff": "2026-06-30",
+  "n_funds_considered": 11,
+  "rolling_period_years": 2,
+  "validation_horizon_years": 2,
+  "min_history_years": 7,
+  "sip_amount": 10000,
+  "primary_rank_metric": "blended_wm",
+  "runtime_seconds": 1.5,
+  "n_predictions": 544,
+  "n_validated": 268,
+  "n_pending": 264,
+  "n_exclusions": 17,
+  "n_comparison_rows": 268,
+  "min_history_years_used": 3,
+  "universe": [
+    "ELSS",
+    "Flexi Cap Fund",
+    "Large & Mid Cap Fund",
+    "Large Cap Fund",
+    "Mid Cap Fund",
+    "Multi Cap Fund",
+    "Small Cap Fund",
+    "Hybrid"
+  ],
+  "excluded_categories": [
+    "Debt",
+    "Gold/Silver"
+  ],
+  "stitch_direction": "backward_only",
+  "actual_outcome_maths": "model_identical"
+}

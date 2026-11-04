@@ -10,15 +10,30 @@
 import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { CheckCircle2, AlertCircle, TrendingUp } from "lucide-react-native";
-import type { HorizonStats } from "@/src/api";
+import type { HorizonStats, LumpsumHorizonStats } from "@/src/api";
 import { radii, space, type ThemeColors, type ThemeType } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
 
+// These three widgets only ever touch the fields that are named identically
+// on both HorizonStats (SIP) and LumpsumHorizonStats (Lumpsum) — median_wm,
+// p10_wm, success_pct, min_wm_required, cv, n_windows, horizon and
+// windows[].wealth_multiple — so one component serves both calculation
+// engines. `mode` only swaps the copy ("SIP" vs "Lumpsum" wording); the
+// numbers themselves already come from the right engine via `h`.
+export type AnyHorizonStats = HorizonStats | LumpsumHorizonStats;
+export type InvestmentMode = "sip" | "lumpsum";
+
+const MODE_WORD: Record<InvestmentMode, { noun: string; plural: string; verb: string }> = {
+  sip: { noun: "SIP", plural: "SIPs", verb: "invested" },
+  lumpsum: { noun: "lumpsum investment", plural: "lumpsum investments", verb: "invested" },
+};
+
 // ─── Plain-English summary ─────────────────────────────────────────────────
 
-export function PlainEnglishSummary({ h }: { h: HorizonStats }) {
+export function PlainEnglishSummary({ h, mode = "sip" }: { h: AnyHorizonStats; mode?: InvestmentMode }) {
   const { colors, type } = useTheme();
   const styles = useMemo(() => makeStyles(colors, type), [colors, type]);
+  const w = MODE_WORD[mode];
 
   const median = h.median_wm;
   const p10 = h.p10_wm;
@@ -28,10 +43,10 @@ export function PlainEnglishSummary({ h }: { h: HorizonStats }) {
   return (
     <View style={styles.summary}>
       <Text style={[type.label, { color: colors.azure, marginBottom: space.sm }]}>
-        WHAT THIS MEANS · {h.horizon}Y SIP
+        WHAT THIS MEANS · {h.horizon}Y {w.noun.toUpperCase()}
       </Text>
       <Bullet
-        text={`Half of all ${h.horizon}-year SIPs ended at `}
+        text={`Half of all ${h.horizon}-year ${w.plural} ended at `}
         boldText={`${median.toFixed(2)}× or more`}
         suffix={` of your invested money.`}
         colors={colors}
@@ -79,13 +94,14 @@ interface Insight {
   text: string;
 }
 
-function generateInsights(h: HorizonStats): Insight[] {
+function generateInsights(h: AnyHorizonStats, mode: InvestmentMode): Insight[] {
   const out: Insight[] = [];
+  const w = MODE_WORD[mode];
 
   if (h.success_pct >= 0.99) {
     out.push({
       kind: "good",
-      text: `100% success rate — every ${h.horizon}Y SIP window beat the benchmark.`,
+      text: `100% success rate — every ${h.horizon}Y ${w.noun} window beat the benchmark.`,
     });
   } else if (h.success_pct >= 0.9) {
     out.push({
@@ -102,17 +118,17 @@ function generateInsights(h: HorizonStats): Insight[] {
   if (h.median_wm >= 3) {
     out.push({
       kind: "good",
-      text: `Strong median outcome — most ${h.horizon}Y SIPs more than tripled your invested capital.`,
+      text: `Strong median outcome — most ${h.horizon}Y ${w.plural} more than tripled your invested capital.`,
     });
   } else if (h.median_wm >= 2) {
     out.push({
       kind: "good",
-      text: `Most ${h.horizon}Y SIPs at least doubled your invested capital.`,
+      text: `Most ${h.horizon}Y ${w.plural} at least doubled your invested capital.`,
     });
   } else if (h.median_wm < 1 && h.horizon >= 3) {
     out.push({
       kind: "bad",
-      text: `Median SIP outcome below 1× — typical investor lost money at ${h.horizon}Y.`,
+      text: `Median outcome below 1× — typical investor lost money at ${h.horizon}Y.`,
     });
   }
 
@@ -138,9 +154,9 @@ function generateInsights(h: HorizonStats): Insight[] {
   return out.slice(0, 3);
 }
 
-export function SmartInsights({ h }: { h: HorizonStats }) {
+export function SmartInsights({ h, mode = "sip" }: { h: AnyHorizonStats; mode?: InvestmentMode }) {
   const { colors, type } = useTheme();
-  const insights = useMemo(() => generateInsights(h), [h]);
+  const insights = useMemo(() => generateInsights(h, mode), [h, mode]);
   if (insights.length === 0) return null;
 
   return (
@@ -176,7 +192,7 @@ export function SmartInsights({ h }: { h: HorizonStats }) {
 
 // ─── WM distribution histogram ────────────────────────────────────────────
 
-export function WmHistogram({ h }: { h: HorizonStats }) {
+export function WmHistogram({ h }: { h: AnyHorizonStats }) {
   const { colors, type } = useTheme();
   const styles = useMemo(() => makeStyles(colors, type), [colors, type]);
 

@@ -1,0 +1,45 @@
+# EAS Build archive rules — must live at the GIT REPOSITORY ROOT (this repo's
+# .git is here, one level above frontend/), because EAS CLI always archives
+# starting from the git root, not from wherever `eas build` was run
+# (https://expo.fyi/eas-build-archive). A root .easignore, once present,
+# REPLACES every .gitignore in the tree for archiving purposes — it does not
+# merge with them — so this file re-states frontend/.gitignore's own rules
+# below rather than relying on it.
+#
+# Without this file, EAS was archiving the ENTIRE monorepo: backend/
+# (283MB, mostly backend/.venv_test at 268MB), backtest_data/ (303MB),
+# backtest/, and a pile of report PDFs/CSVs/MD files at the repo root —
+# none of which the Android/iOS app needs, and together the likely cause of
+# the 233MB compressed archive and the upload failing partway through.
+
+# 1. Ignore everything at the repo root by default...
+/*
+# ...except the Expo app itself, which EAS actually needs to build.
+!/frontend
+
+# 2. frontend/.gitignore's own rules, restated here since this file
+#    supersedes it entirely for EAS's purposes.
+frontend/node_modules/
+frontend/.expo/
+frontend/dist/
+frontend/web-build/
+frontend/expo-env.d.ts
+frontend/.metro-health-check*
+frontend/*.tsbuildinfo
+frontend/app-example
+frontend/.env*.local
+frontend/*.jks
+frontend/*.p8
+frontend/*.p12
+frontend/*.key
+frontend/*.mobileprovision
+frontend/*.pem
+
+# 3. Local cache/build junk with no .gitignore entry but no business in a
+#    build archive either — .metro-cache alone was ~120MB on its own.
+frontend/.metro-cache/
+frontend/.pytest_cache/
+**/.DS_Store
+**/npm-debug.*
+**/yarn-debug.*
+**/yarn-error.*

@@ -1,0 +1,165 @@
+n_points,first,last,span_years,duplicate_dates,months_present,months_expected,missing_months,n_long_gaps,min_nav,max_nav,scheme_code,scheme_name,internal_category,amfi_category
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,66.01,964.51,100033,Aditya Birla Sun Life Large & Mid Cap Fund - Regular Growth,Large Cap,Equity Scheme - Large & Mid Cap Fund
+5010,2006-04-03,2026-08-05,20.34,0,245,245,0,0,27.95,365.682,100081,DSP Aggressive Hybrid Fund- Regular Plan - Growth,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,30.738,539.055,100119,HDFC Balanced Advantage Fund - Growth Plan,Hybrid,Hybrid Scheme - Dynamic Asset Allocation or Balanced Advantage
+3870,2006-04-03,2021-12-30,15.74,0,189,189,0,0,36.01,344.09,100156,Principal Tax Savings Fund,ELSS,Equity Scheme - ELSS
+5013,2006-04-03,2026-08-05,20.34,0,245,245,0,0,24.8601,416.7769,100175,quant ELSS Tax Saver Fund - Growth Option - Regular Plan,ELSS,Equity Scheme - ELSS
+5009,2006-04-03,2026-08-05,20.34,0,245,245,0,0,17.3217,288.4233,100177,quant Small Cap Fund - Growth - Regular Plan,Small Cap,Equity Scheme - Small Cap Fund
+5011,2006-04-03,2026-08-05,20.34,0,245,245,0,0,16.8697,168.6969,100219,JM Large Cap Fund (Regular) - Growth Option,Large Cap,Equity Scheme - Large Cap Fund
+5013,2006-04-03,2026-08-05,20.34,0,245,245,0,0,12.2037,130.5442,100221,JM Aggressive Hybrid Fund (Regular) -Growth Option,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+4965,2006-04-03,2026-08-05,20.34,0,245,245,0,0,12.6516,107.4369,100313,LIC MF Flexi Cap Fund-Regular Plan-Growth,Flexi Cap,Equity Scheme - Flexi Cap Fund
+4964,2006-04-03,2026-08-05,20.34,0,245,245,0,0,33.6505,203.1063,100323,LIC MF Aggressive Hybrid Fund-Regular Plan-Growth,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+5008,2006-04-02,2026-08-05,20.34,0,245,245,0,0,60.79,1071.63,100349,ICICI Prudential Large & Mid Cap Fund - Growth,Large Cap,Equity Scheme - Large & Mid Cap Fund
+5008,2006-04-02,2026-08-05,20.34,0,245,245,0,0,48.36,978.31,100354,ICICI Prudential ELSS Tax Saver Fund - Growth,ELSS,Equity Scheme - ELSS
+5008,2006-04-02,2026-08-05,20.34,0,245,245,0,0,23.17,414.8,100356,ICICI Prudential Equity & Debt Fund - Growth,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,170.8,4577.124,100377,Nippon India Growth Mid Cap Fund-Growth Plan-Growth Option,Mid Cap,Equity Scheme - Mid Cap Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,115.15,1530.2377,100380,Nippon India Vision Large & Midcap Fund-GROWTH PLAN-Growth Option,Large Cap,Equity Scheme - Large & Mid Cap Fund
+5008,2006-04-03,2026-08-05,20.34,0,245,245,0,0,35.6227,456.224,100414,Tata Aggressive Hybrid Fund- Regular Plan - Growth Option,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+5003,2006-04-03,2026-08-05,20.34,0,245,245,0,0,85.37,1077.6823,100471,Franklin India Large Cap Fund-Growth,Large Cap,Equity Scheme - Large Cap Fund
+5003,2006-04-03,2026-08-05,20.34,0,245,245,0,0,96.8225,2874.7106,100473,Franklin India Mid Cap Fund-Growth,Mid Cap,Equity Scheme - Mid Cap Fund
+5008,2006-04-03,2026-08-05,20.34,0,245,245,0,0,41.3132,532.1964,100475,Tata Large Cap Fund -Regular Plan - Growth Option,Large Cap,Equity Scheme - Large Cap Fund
+5009,2006-04-03,2026-08-06,20.34,0,245,245,0,0,21.69,245.78,100476,Taurus Flexi Cap Fund - Regular Plan - Growth,Flexi Cap,Equity Scheme - Flexi Cap Fund
+5009,2006-04-03,2026-08-06,20.34,0,245,245,0,0,6.22,131.7,100477,Taurus Mid Cap Fund - Regular Plan - Growth,Mid Cap,Equity Scheme - Mid Cap Fund
+5009,2006-04-03,2026-08-06,20.34,0,245,245,0,0,12.47,191.32,100480,Taurus ELSS Tax Saver Fund - Regular Plan - Growth,ELSS,Equity Scheme - ELSS
+5004,2006-04-03,2026-08-05,20.34,0,245,245,0,0,84.78,1713.0081,100520,Franklin India Flexi Cap Fund - Growth,Flexi Cap,Equity Scheme - Flexi Cap Fund
+5004,2006-04-03,2026-08-05,20.34,0,245,245,0,0,85.1901,1556.6942,100526,Franklin India ELSS Tax Saver Fund-Growth,ELSS,Equity Scheme - ELSS
+5000,2006-04-03,2026-08-05,20.34,0,245,245,0,0,18.4946,277.5195,100550,Franklin India Aggressive Hybrid Fund - Growth Plan,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+4928,2006-04-12,2026-08-05,20.31,0,245,245,0,0,16.4,100.3218,100601,CANARA ROBECO CONSERVATIVE HYBRID FUND - REGULAR PLAN - GROWTH OPTION,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+3877,2006-04-03,2021-12-31,15.75,0,189,189,0,0,23.0453,138.9023,100617,Sundaram Equity Hybrid Fund Regular Plan - Growth,Hybrid,Hybrid Scheme - Balanced Hybrid Fund
+5013,2006-04-03,2026-08-05,20.34,0,245,245,0,0,33.697,731.2478,100631,quant Multi Cap Fund-GROWTH OPTION - Regular Plan,Multi Cap,Equity Scheme - Multi Cap Fund
+5002,2006-04-03,2026-08-05,20.34,0,245,245,0,0,12.7845,43.4889,100646,UTI - Unit Linked Insurance Plan,Hybrid,Hybrid Scheme - Dynamic Asset Allocation or Balanced Advantage
+5002,2006-04-03,2026-08-05,20.34,0,245,245,0,0,23.17,289.7572,100651,UTI Large Cap Fund - Regular Plan - Growth Option,Large Cap,Equity Scheme - Large Cap Fund
+4999,2006-04-03,2026-08-05,20.34,0,245,245,0,0,21.29,190.271,100664,UTI Large & Mid Cap Fund - Regular Plan - Growth Option,Large Cap,Equity Scheme - Large & Mid Cap Fund
+4999,2006-04-03,2026-08-05,20.34,0,245,245,0,0,22.9,338.7304,100669,UTI - Flexi Cap Fund-Growth Option,Flexi Cap,Equity Scheme - Flexi Cap Fund
+4998,2006-04-03,2026-08-05,20.34,0,245,245,0,0,40.28,422.1666,100684,UTI Aggressive Hybrid Fund - Regular Plan - Growth,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+5008,2006-04-03,2026-08-05,20.34,0,245,245,0,0,11.4828,294.6558,100795,Sundaram Small Cap Fund Regular Plan - Growth,Small Cap,Equity Scheme - Small Cap Fund
+5002,2006-04-03,2026-08-05,20.34,0,245,245,0,0,19.31,222.0127,100821,UTI ELSS Tax Saver Fund - Regular Plan - Growth Option,ELSS,Equity Scheme - ELSS
+4965,2006-04-03,2026-08-05,20.34,0,245,245,0,0,14.7409,160.5157,100865,LIC MF ELSS Tax Saver-Regular Plan-Growth,ELSS,Equity Scheme - ELSS
+5002,2006-04-03,2026-08-05,20.34,0,245,245,0,0,18.4596,93.0237,100948,Franklin India Conservative Hybrid Fund - Growth,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+3872,2006-04-03,2021-12-30,15.74,0,189,189,0,0,24.97,246.83,100967,Principal Multi Cap Growth Fund-Growth Option,Multi Cap,Equity Scheme - Multi Cap Fund
+4934,2006-04-03,2026-08-05,20.34,0,245,245,0,0,15.6252,76.8841,100968,SBI Conservative Hybrid Fund - Regular Plan - Growth,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+3887,2006-04-03,2022-01-14,15.78,0,190,190,0,0,51.816,595.363,100998,HDFC Long Term Advantage Plan - Growth Plan,ELSS,Equity Scheme - ELSS
+5013,2006-04-03,2026-08-05,20.34,0,245,245,0,0,21.1934,253.4767,101065,quant Mid Cap Fund - Growth Option - Regular Plan,Mid Cap,Equity Scheme - Mid Cap Fund
+5013,2006-04-03,2026-08-05,20.34,0,245,245,0,0,35.9074,476.3938,101070,quant Aggressive Hybrid Fund - Growth Option - Regular Plan,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,14.1912,171.7186,101072,quant Multi Asset Allocation Fund-GROWTH OPTION - Regular Plan,Hybrid,Hybrid Scheme - Multi Asset Allocation
+5006,2006-04-02,2026-08-05,20.34,0,245,245,0,0,40.2505,832.1171,101144,ICICI Prudential Multi-Asset Fund - Growth,Hybrid,Hybrid Scheme - Multi Asset Allocation
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,11.6052,308.9933,101161,Nippon India Multi Cap Fund-Growth Plan-Growth Option,Multi Cap,Equity Scheme - Multi Cap Fund
+5009,2006-04-03,2026-08-06,20.34,0,245,245,0,0,19.69,169.14,101209,Taurus Large Cap Fund - Regular Plan - Growth,Large Cap,Equity Scheme - Large Cap Fund
+5008,2006-04-02,2026-08-05,20.34,0,245,245,0,0,47.12,875.63,101228,ICICI Prudential Multicap Fund - Growth,Multi Cap,Equity Scheme - Multi Cap Fund
+3874,2006-04-03,2021-12-30,15.74,0,189,189,0,0,15.69,117.39,101265,Principal Hybrid Equity Fund-Growth,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+3823,2006-04-03,2021-12-30,15.74,0,189,189,0,0,14.0612,51.3503,101498,Principal Equity Savings Fund - Growth Option,Hybrid,Hybrid Scheme - Equity Savings
+5008,2006-04-03,2026-08-05,20.34,0,245,245,0,0,48.6862,1529.4062,101539,Sundaram Mid Cap Fund Regular Plan - Growth,Mid Cap,Equity Scheme - Mid Cap Fund
+4973,2006-04-03,2026-08-05,20.34,0,245,245,0,0,11.5921,68.636,101585,HDFC Equity Savings Fund - GROWTH PLAN,Hybrid,Hybrid Scheme - Equity Savings
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,38.07,854.91,101592,Aditya Birla Sun Life MIDCAP Fund-Growth,Mid Cap,Equity Scheme - Mid Cap Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,45.6847,507.5234,101594,HSBC Large Cap Fund - Regular Growth,Large Cap,Equity Scheme - Large Cap Fund
+5009,2006-04-03,2026-08-05,20.34,0,245,245,0,0,36.76,489.578,101635,DSP Large Cap Fund - Regular Plan - Growth,Large Cap,Equity Scheme - Large Cap Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,91.226,2100.153,101762,HDFC Flexi Cap Fund - Growth Plan,Flexi Cap,Equity Scheme - Flexi Cap Fund
+3859,2006-04-03,2021-12-27,15.73,0,189,189,0,0,40.09,321.53,101815,Principal Personal Tax Saver Fund,ELSS,Equity Scheme - ELSS
+5008,2006-04-03,2026-08-05,20.34,0,245,245,0,0,33.9664,562.2046,101824,Tata Large & Mid Cap Fund- Regular Plan - Growth Option,Large Cap,Equity Scheme - Large & Mid Cap Fund
+4912,2006-04-03,2026-08-05,20.34,0,245,245,0,0,21.6098,85.0418,101869,LIC MF Conservative Hybrid Fund-Regular Plan-Growth,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+4848,2006-04-03,2026-02-20,19.89,0,239,239,0,0,13.5263,56.7277,101906,Tata Equity Savings Fund -Regular Plan-Growth Option,Hybrid,Hybrid Scheme - Equity Savings
+3918,2006-04-03,2022-03-13,15.94,0,192,192,0,0,15.4,88.03,101912,BARODA  HYBRID EQUITY FUND - Plan A - Growth Option,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+4994,2006-04-03,2026-08-05,20.34,0,245,245,0,0,20.06,353.33,101922,CANARA ROBECO FLEXICAP FUND - REGULAR PLAN - GROWTH OPTION,Flexi Cap,Equity Scheme - Flexi Cap Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,83.659,1474.501,101979,HDFC ELSS Tax saver - Growth Plan,ELSS,Equity Scheme - ELSS
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,73.82,1216.715,102000,HDFC Large Cap Fund - Growth Option - Regular Plan,Large Cap,Equity Scheme - Large Cap Fund
+5000,2006-04-03,2026-08-05,20.34,0,245,245,0,0,21.17,305.1344,102020,Baroda BNP Paribas MULTI CAP FUND - Regular Plan - Growth Option,Multi Cap,Equity Scheme - Multi Cap Fund
+4926,2006-04-03,2026-08-05,20.34,0,245,245,0,0,12.9231,84.426,102147,HDFC Hybrid Debt Fund - Growth Plan,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+4911,2006-04-03,2026-08-05,20.34,0,245,245,0,0,12.3191,62.2062,102172,Nippon India Conservative Hybrid  Fund-Growth Plan,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,17.4046,233.22,102252,HSBC Flexi Cap Fund - Regular Growth,Flexi Cap,Equity Scheme - Flexi Cap Fund
+4917,2006-04-03,2026-08-05,20.34,0,245,245,0,0,11.6747,63.9471,102262,HSBC Conservative Hybrid Fund - Regular Growth,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+5008,2006-04-03,2026-08-05,20.34,0,245,245,0,0,16.8947,468.2201,102328,Tata Mid Cap Fund Regular Plan- Growth Option,Mid Cap,Equity Scheme - Mid Cap Fund
+5002,2006-04-03,2026-08-05,20.34,0,245,245,0,0,11.19,324.4912,102394,UTI Mid Cap Fund-Growth Option,Mid Cap,Equity Scheme - Mid Cap Fund
+5008,2006-04-02,2026-08-05,20.34,0,245,245,0,0,11.89,345.7,102528,ICICI Prudential MidCap Fund - Growth,Mid Cap,Equity Scheme - Mid Cap Fund
+4926,2006-04-03,2026-08-05,20.34,0,245,245,0,0,12.4667,71.386,102533,UTI Conservative Hybrd Fund - Regular Plan - Monthly Payment Option,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+4926,2006-04-03,2026-08-05,20.34,0,245,245,0,0,12.4793,71.3494,102535,UTI Conservative Hybrid Fund - Regular Plan - Growth Option,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+3851,2006-04-03,2022-03-13,15.94,0,192,192,0,0,11.255,30.9533,102661,BARODA CONSERVATIVE HYBRID FUND - Plan A - Growth Option,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+5006,2006-04-03,2026-08-05,20.34,0,245,245,0,0,14.9999,186.2813,102846,Nippon India Balanced Advantage Fund-Growth Plan-Growth Option,Hybrid,Hybrid Scheme - Dynamic Asset Allocation or Balanced Advantage
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,9.587,290.417,102875,Kotak-Small Cap Fund - Growth,Small Cap,Equity Scheme - Small Cap Fund
+5003,2006-04-03,2026-08-05,20.34,0,245,245,0,0,12.4269,198.3417,102883,Franklin India Large & Mid Cap Fund - Growth Plan,Large Cap,Equity Scheme - Large & Mid Cap Fund
+4996,2006-04-03,2026-08-05,20.34,0,245,245,0,0,25.55,321.6575,102885,SBI EQUITY HYBRID FUND - REGULAR PLAN -Growth,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+5002,2006-04-03,2026-08-05,20.34,0,245,245,0,0,6.75,266.88,102920,CANARA ROBECO LARGE AND MID CAP FUND - REGULAR PLAN - GROWTH OPTION,Large Cap,Equity Scheme - Large & Mid Cap Fund
+4997,2006-04-03,2026-08-05,20.34,0,245,245,0,0,8.26,251.0105,102941,SBI MIDCAP FUND - REGULAR PLAN - GROWTH,Mid Cap,Equity Scheme - Mid Cap Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,10.42,121.431,102948,HDFC Hybrid Equity Fund - Growth Plan,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+4099,2006-04-03,2022-11-25,16.65,0,200,200,0,0,9.0046,97.127,103006,HSBC Small Cap Equity Fund - Growth,Small Cap,Equity Scheme - Small Cap Fund
+4995,2006-04-03,2026-08-05,20.34,0,245,245,0,0,33.81,668.5167,103024,SBI LARGE & MIDCAP FUND- REGULAR PLAN -Growth,Large Cap,Equity Scheme - Large & Mid Cap Fund
+4959,2006-04-03,2026-08-05,20.34,0,245,245,0,0,10.4735,77.53,103131,HDFC Multi-Asset Fund - Growth Option,Hybrid,Hybrid Scheme - Multi Asset Allocation
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,129.61,1579.93,103155,Aditya Birla Sun Life Equity Hybrid'95 Fund - Regular Plan-Growth,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,108.99,1988.05,103166,Aditya Birla Sun Life Flexi Cap Fund - Growth - Regular Plan,Flexi Cap,Equity Scheme - Flexi Cap Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,32.26,553.21,103174,Aditya Birla Sun Life Large Cap Fund-Growth,Large Cap,Equity Scheme - Large Cap Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,8.5309,136.226,103196,Nippon India ELSS Tax Saver Fund-Growth Plan-Growth Option,ELSS,Equity Scheme - ELSS
+4995,2006-04-03,2026-08-05,20.34,0,245,245,0,0,8.33,115.3027,103215,SBI Flexicap Fund - REGULAR PLAN -Growth Option,Flexi Cap,Equity Scheme - Flexi Cap Fund
+5006,2006-04-03,2026-08-05,20.34,0,245,245,0,0,18.793,361.922,103234,Kotak Large & Midcap Fund - Growth-Regular,Large Cap,Equity Scheme - Large & Mid Cap Fund
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,8.035,123.712,103339,Kotak ELSS Tax Saver Fund-Growth,ELSS,Equity Scheme - ELSS
+5007,2006-04-03,2026-08-05,20.34,0,245,245,0,0,5.0702,188.1443,103360,Franklin India Small Cap Fund-Growth,Small Cap,Equity Scheme - Small Cap Fund
+4934,2006-04-03,2026-08-05,20.34,0,245,245,0,0,10.013,68.0656,103408,SBI MULTI ASSET ALLOCATION FUND - REGULAR PLAN - GROWTH,Hybrid,Hybrid Scheme - Multi Asset Allocation
+4997,2006-04-03,2026-08-05,20.34,0,245,245,0,0,6.58,97.3744,103504,SBI Large Cap FUND-REGULAR PLAN GROWTH,Large Cap,Equity Scheme - Large Cap Fund
+5009,2006-04-03,2026-08-05,20.34,0,245,245,0,0,35.636,650.624,103819,DSP Large & Mid Cap Fund - Regular Plan - Growth,Large Cap,Equity Scheme - Large & Mid Cap Fund
+4067,2006-10-04,2023-04-13,16.52,0,199,199,0,0,6.22,53.65,104331,Aditya Birla Sun Life Tax Plan - Regular Plan - Growth Option,ELSS,Equity Scheme - ELSS
+4854,2006-11-16,2026-08-05,19.72,0,238,238,0,0,5.771,157.425,104481,DSP Midcap Fund - Regular Plan - Growth,Mid Cap,Equity Scheme - Mid Cap Fund
+4822,2007-01-09,2026-08-05,19.57,0,236,236,0,0,7.0594,132.0363,104513,quant Large & Mid Cap Fund - Growth Option,Large Cap,Equity Scheme - Large & Mid Cap Fund
+4811,2007-01-02,2026-08-05,19.59,0,236,236,0,0,6.9,133.18,104636,Invesco India ELSS Tax Saver Fund - Regular Plan - Growth,ELSS,Equity Schemes - ELSS- Tax Saver Fund
+4820,2007-01-01,2026-08-05,19.59,0,236,236,0,0,7.23,80.21,104685,ICICI Prudential Balanced Advantage Fund - Growth,Hybrid,Hybrid Scheme - Dynamic Asset Allocation or Balanced Advantage
+4680,2007-01-17,2026-01-23,19.02,0,229,229,0,0,6.6234,98.4165,104707,HSBC Tax Saver Equity Fund - Growth,ELSS,Equity Scheme - ELSS
+4809,2007-01-22,2026-08-05,19.53,0,236,236,0,0,6.893,146.693,104772,DSP ELSS Tax Saver Fund - Regular Plan - Growth,ELSS,Equity Scheme - ELSS
+4760,2007-04-02,2026-08-05,19.34,0,233,233,0,0,4.922,147.952,104908,Kotak Midcap Fund - Regular Plan - Growth,Mid Cap,Equity Scheme - Mid Cap Fund
+4767,2007-03-05,2026-08-05,19.42,0,234,234,0,0,6.4072,94.0833,105001,Sundaram Large and Midcap Fund Regular Plan - Growth,Large Cap,Equity Scheme - Large & Mid Cap Fund
+4741,2007-04-20,2026-08-05,19.29,0,233,233,0,0,4.82,201.74,105503,Invesco India Midcap Fund - Regular Plan - Growth Option,Mid Cap,Equity Schemes - Mid Cap Fund
+4729,2007-05-07,2026-08-05,19.25,0,232,232,0,0,27.19,459.0999,105628,SBI ELSS Tax Saver FUND - REGULAR PLAN- GROWTH,ELSS,Equity Scheme - ELSS
+4695,2007-07-05,2026-08-05,19.09,0,230,230,0,0,5.285,213.426,105758,HDFC Mid Cap Fund - Growth Plan,Mid Cap,Equity Scheme - Mid Cap Fund
+4715,2007-05-31,2026-08-05,19.18,0,232,232,0,0,4.3122,98.8096,105804,Aditya Birla Sun Life Small Cap Fund - GROWTH,Small Cap,Equity Scheme - Small Cap Fund
+4717,2007-06-08,2026-08-05,19.16,0,231,231,0,0,6.951,108.401,105875,DSP Flexi Cap Fund - Regular Plan - Growth,Flexi Cap,Equity Scheme - Flexi Cap Fund
+4177,2007-06-20,2026-08-05,19.13,0,231,231,0,0,4.202,225.485,105989,DSP Small Cap Fund - Regular - Growth,Small Cap,Equity Scheme - Small Cap Fund
+4663,2007-08-13,2026-08-05,18.98,0,229,229,0,0,5.77,112.06,106144,Invesco India Large & Mid Cap Fund - Regular Plan - Growth,Large Cap,Equity Schemes - Large & Mid Cap Fund
+4677,2007-07-23,2026-08-05,19.04,0,230,230,0,0,28.04,375.64,106166,CANARA ROBECO EQUITY HYBRID FUND - REGULAR PLAN - GROWTH OPTION,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+4671,2007-08-09,2026-08-05,18.99,0,229,229,0,0,5.8761,94.7726,106235,Nippon India Large Cap  Fund- Growth Plan -Growth Option,Large Cap,Equity Scheme - Large Cap Fund
+4627,2007-10-05,2026-08-05,18.83,0,227,227,0,0,5.66,55.19,106317,Invesco India Balanced Advantage Fund - Regular Plan - Growth,Hybrid,Hybrid Schemes - Balanced Advantage Fund/ Dynamic Asset Allocation
+4566,2007-10-19,2026-08-05,18.8,0,227,227,0,0,4.48,93.01,106823,ICICI Prudential Smallcap Fund - Growth,Small Cap,Equity Scheme - Small Cap Fund
+4576,2007-10-31,2026-08-05,18.76,0,227,227,0,0,5.6296,59.1383,106871,LIC MF Large Cap Fund-Regular Plan-Growth,Large Cap,Equity Scheme - Large Cap Fund
+4497,2008-04-23,2026-08-05,18.28,0,221,221,0,0,3.3472,53.0707,107288,JM ELSS Tax Saver Fund (Regular) - Growth option,ELSS,Equity Scheme - ELSS
+4514,2008-03-18,2026-08-05,18.38,0,222,222,0,0,4.67,141.66,107353,Invesco India Multicap Fund - Regular Plan - Growth Option,Multi Cap,Equity Schemes - Multi Cap Fund
+4505,2008-04-09,2026-08-05,18.32,0,221,221,0,0,5.48,118.556,107578,Mirae Asset Large Cap Fund - Growth Plan,Large Cap,Equity Scheme - Large Cap Fund
+4524,2008-03-10,2026-08-05,18.4,0,222,222,0,0,4.44,63.27,107745,Aditya Birla Sun Life ELSS Tax Saver Fund - Growth Option,ELSS,Equity Scheme - ELSS
+4476,2008-05-26,2026-08-05,18.19,0,220,220,0,0,6.06,116.62,108466,ICICI Prudential Large Cap Fund (erstwhile Bluechip Fund)  - Growth,Large Cap,Equity Scheme - Large Cap Fund
+4480,2008-06-02,2026-08-05,18.17,0,219,219,0,0,11.239,218.588,108594,BANDHAN Flexi Cap Fund - Regular Plan - Growth,Flexi Cap,Equity Scheme - Flexi Cap Fund
+4480,2008-06-02,2026-08-05,18.17,0,219,219,0,0,10.2366,142.167,108596,Bandhan Large & Mid Cap Fund - Regular Plan - Growth,Large Cap,Equity Scheme - Large & Mid Cap Fund
+4293,2008-06-04,2026-08-05,18.17,0,219,219,0,0,7.4736,81.237,108799,BANDHAN Large Cap Fund - Regular Plan - Growth,Large Cap,Equity Scheme - Large Cap Fund
+4474,2008-06-10,2026-08-05,18.15,0,219,219,0,0,9.9978,32.828,108995,BANDHAN Equity Savings Fund - Regular Plan - Growth,Hybrid,Hybrid Scheme - Equity Savings
+4390,2008-09-25,2026-08-05,17.86,0,216,216,0,0,5.9322,109.6953,109522,JM Flexicap Fund (Regular) - Growth option,Flexi Cap,Equity Scheme - Flexi Cap Fund
+4381,2008-10-20,2026-08-05,17.79,0,215,215,0,0,7.7442,111.9384,109830,quant Flexi Cap Fund - Growth Option - Regular Plan,Flexi Cap,Equity Scheme - Flexi Cap Fund
+4369,2008-10-29,2026-08-05,17.77,0,215,215,0,0,8.44,104.0,110599,BANK OF INDIA Large & Mid Cap Fund Eco Plan- Growth,Large Cap,Equity Scheme - Large & Mid Cap Fund
+4369,2008-10-29,2026-08-05,17.77,0,215,215,0,0,8.43,93.96,110603,BANK OF INDIA Large & Mid Cap Fund Regular Plan- Growth,Large Cap,Equity Scheme - Large & Mid Cap Fund
+4340,2008-12-29,2026-08-05,17.6,0,213,213,0,0,9.3404,162.709,111569,BANDHAN ELSS Tax Saver Fund - Regular Plan - Growth,ELSS,Equity Scheme - ELSS
+4337,2008-12-18,2026-08-05,17.63,0,213,213,0,0,9.89,80.9616,111599,UTI Multi Asset Allocation Fund - Regular Plan - Growth Option,Hybrid,Hybrid Scheme - Multi Asset Allocation
+4330,2008-12-31,2026-08-05,17.59,0,213,213,0,0,9.58,118.08,111638,Edelweiss ELSS Tax Saver Fund - Regular Plan - Growth Option,ELSS,Equity Scheme - ELSS
+4290,2009-02-27,2026-08-05,17.43,0,211,211,0,0,9.07,191.99,111709,BANK OF INDIA ELSS Tax Saver -ECO Plan-Growth,ELSS,Equity Scheme - ELSS
+4290,2009-02-27,2026-08-05,17.43,0,211,211,0,0,9.07,177.91,111710,BANK OF INDIA ELSS Tax Saver -Regular Plan- Growth,ELSS,Equity Scheme - ELSS
+4306,2009-02-03,2026-08-05,17.5,0,211,211,0,0,9.25,184.92,111722,CANARA ROBECO ELSS TAX SAVER - REGULAR PLAN - GROWTH OPTION,ELSS,Equity Scheme - ELSS
+4241,2009-05-21,2026-08-05,17.21,0,208,208,0,0,9.79,90.2,111935,Edelweiss Large Cap Fund -Plan B - Growth option,Large Cap,Equity Scheme - Large Cap Fund
+4241,2009-05-21,2026-08-05,17.21,0,208,208,0,0,9.79,89.02,111937,Edelweiss Large Cap Fund -Plan C - Growth option,Large Cap,Equity Scheme - Large Cap Fund
+4241,2009-05-21,2026-08-05,17.21,0,208,208,0,0,9.79,89.65,111940,Edelweiss Large Cap Fund - Regular Plan - Growth Option,Large Cap,Equity Scheme - Large Cap Fund
+4216,2009-06-26,2026-08-05,17.11,0,207,207,0,0,8.81,65.33,112012,Edelweiss Aggressive Hybrid Fund- Plan B-Growth Option,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+4154,2009-09-17,2026-08-05,16.88,0,204,204,0,0,9.565,89.364,112090,Kotak Flexicap Fund - Growth,Flexi Cap,Equity Scheme - Flexi Cap Fund
+4169,2009-08-28,2026-08-05,16.94,0,205,205,0,0,9.92,73.59,112098,Invesco India Largecap Fund - Regular Plan - Growth,Large Cap,Equity Schemes - Large Cap Fund
+4183,2009-08-12,2026-08-05,16.98,0,205,205,0,0,9.81,66.03,112108,Edelweiss Aggressive Hybrid Fund - Regular Plan - Growth Option,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+4175,2009-08-21,2026-08-05,16.96,0,205,205,0,0,9.85,53.83,112117,Edelweiss Balanced Advantage Fund - Regular Plan - Growth Option,Hybrid,Hybrid Scheme - Dynamic Asset Allocation or Balanced Advantage
+4092,2010-01-07,2026-08-05,16.57,0,200,200,0,0,9.0,64.04,112277,Axis Large Cap Fund - Regular Plan - Growth,Large Cap,Equity Scheme - Large Cap Fund
+4096,2009-12-31,2026-08-05,16.59,0,201,201,0,0,9.9245,101.2611,112323,Axis ELSS Tax Saver Fund - Regular Plan - Growth,ELSS,Equity Scheme - ELSS
+3978,2010-02-26,2026-08-05,16.44,0,199,199,0,0,10.0267,33.3443,112353,BANDHAN Conservative Hybrid Fund - Regular Plan - Growth,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+3948,2010-04-05,2026-08-05,16.33,0,197,197,0,0,9.9314,30.01,112868,Sundaram Conservative Hybrid Fund (Formerly Known as Sundaram Debt Oriented Hybrid Fund) Regular Plan - Growth,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+3881,2010-07-21,2026-08-05,16.04,0,194,194,0,0,10.0045,30.768,112924,Axis Conservative Hybrid Fund - Regular Plan - Growth Option,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+3958,2010-07-12,2026-08-05,16.07,0,194,194,0,0,9.366,160.069,112932,Mirae Asset Large & Midcap Fund - Regular Plan - Growth,Large Cap,Equity Scheme - Large & Mid Cap Fund
+3993,2010-05-21,2026-08-05,16.21,0,196,196,0,0,18.8228,108.9463,112936,Nippon India Aggressive Hybrid Fund - Growth Plan,Hybrid,Hybrid Scheme - Aggressive Hybrid Fund
+3931,2010-08-27,2026-08-05,15.94,0,193,193,0,0,9.8576,46.7317,113064,Axis Multi Asset Allocation Fund - Regular Plan - Growth Option,Hybrid,Hybrid Scheme - Multi Asset Allocation
+3455,2010-08-02,2024-11-14,14.29,0,172,172,0,0,10.0508,26.4594,113142,Navi Conservative Hybrid Fund-Growth,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+3907,2010-09-21,2026-08-05,15.87,0,192,192,0,0,7.6005,183.9892,113177,Nippon India Small Cap Fund - Growth Plan - Growth Option,Small Cap,Equity Scheme - Small Cap Fund
+3927,2010-08-23,2026-08-05,15.95,0,193,193,0,0,9.17,65.34,113221,CANARA ROBECO LARGE CAP FUND - REGULAR PLAN - GROWTH OPTION,Large Cap,Equity Scheme - Large Cap Fund
+3887,2010-10-22,2026-08-05,15.79,0,191,191,0,0,7.981,113.1508,113566,BNP Paribas Mid Cap Fund-Growth Option,Mid Cap,Equity Scheme - Mid Cap Fund
+3834,2011-01-03,2026-08-05,15.59,0,188,188,0,0,87.614,599.496,114458,Kotak Large Cap Fund - Growth,Large Cap,Equity Scheme - Large Cap Fund
+3808,2011-02-24,2026-08-05,15.44,0,187,187,0,0,8.76,122.55,114564,Axis Midcap Fund - Regular Plan - Growth,Mid Cap,Equity Scheme - Mid Cap Fund
+3722,2011-03-01,2026-08-05,15.43,0,186,186,0,0,15.3988,60.2121,114859,Kotak Debt Hybrid - Growth,Hybrid,Hybrid Scheme - Conservative Hybrid Fund
+3722,2011-06-17,2026-08-05,15.13,0,183,183,0,0,8.15,53.22,115270,Union Flexi Cap Fund - Growth Option,Flexi Cap,Equity Scheme - Flexi Cap Fund
+3591,2011-12-30,2026-08-05,14.6,0,177,177,0,0,10.02,68.05,116051,Union ELSS Tax Saver Fund - Growth Option,ELSS,Equity Scheme - ELSS
+3562,2012-02-14,2026-08-05,14.47,0,175,175,0,0,8.7,45.73,116547,Groww Largecap Fund (formerly known as Indiabulls Blue Chip Fund) - Regular Plan- Growth Option,Large Cap,Equity Schemes - Large Cap Fund
+4503,2008-04-10,2026-08-05,18.32,0,221,221,0,0,5.292,146.29,130502,HDFC Small Cap Fund - Growth Option,Small Cap,Equity Scheme - Small Cap Fund
+4577,2007-12-27,2026-08-05,18.61,0,225,225,0,0,2.688,109.907,140225,Edelweiss Mid Cap Fund - Regular Plan - Growth Option,Mid Cap,Equity Scheme - Mid Cap Fund
+3887,2010-10-22,2026-08-05,15.79,0,191,191,0,0,7.981,113.1508,150209,BARODA BNP PARIBAS Mid Cap Fund - Regular Plan - Growth Option,Mid Cap,Equity Scheme - Mid Cap Fund

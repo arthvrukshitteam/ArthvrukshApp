@@ -1,0 +1,16 @@
+{
+  "140225_window_timeline": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/140225_window_timeline.png",
+  "140225_predicted_vs_actual_wm": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/140225_predicted_vs_actual_wm.png",
+  "140225_prediction_error": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/140225_prediction_error.png",
+  "140225_fqs_trend": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/140225_fqs_trend.png",
+  "140225_scatter": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/140225_scatter.png",
+  "130502_window_timeline": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/130502_window_timeline.png",
+  "130502_predicted_vs_actual_wm": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/130502_predicted_vs_actual_wm.png",
+  "130502_prediction_error": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/130502_prediction_error.png",
+  "130502_fqs_trend": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/130502_fqs_trend.png",
+  "130502_scatter": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/130502_scatter.png",
+  "cross_fund_accuracy": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/cross_fund_accuracy.png",
+  "overall_selection_accuracy": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/overall_selection_accuracy.png",
+  "overall_rank_quality": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/overall_rank_quality.png",
+  "fund_timeline_overview": "/Users/vishnumaurya/vishnu_maurya/other_codebase/freelance/arthvruksh-model/backtest_data/report_out/charts/fund_timeline_overview.png"
+}

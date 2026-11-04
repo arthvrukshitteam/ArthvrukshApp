@@ -186,3 +186,7 @@ frontend/.cache/
 # =========================
 !package-lock.json
 !frontend/package-lock.json
+# Lineage build artifacts (regenerate: backend/scripts/build_lineage.py)
+lineage_out/
+lineage_out/
+_nav_cache.json
