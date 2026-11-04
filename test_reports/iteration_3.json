@@ -1,0 +1,39 @@
+{
+  "summary": "Validated rebuilt MF Analyst app end-to-end. Backend 14/14 pytest tests pass: /api/health ok; /funds/search?q=nippon+small returns 118778 with multi-token AND filtering; /funds/118778/analyze returns scheme_name 'Nippon India Small Cap Fund - Direct Plan Growth Plan - Growth Option', category='Small Cap', monthly_points=161, headline_xirr≈0.2313, headline_fqs=90 (Elite, anchored on 10Y), cycle_robustness=78.0, stability_check=1.94, available_horizons=[1..13]; horizon window counts confirmed via formula n_windows = m - h*12 + 1 (1Y=150, 10Y=42); windows[] rows include start_date/end_date/total_units/end_nav/end_value/total_invested/wealth_multiple/good; ?start_date=2018-01-01 returns start_date_applied='2018-01-01' with monthly_points≈101 and max horizon ≤8Y; bad-format → 400; unknown scheme 99999999 → 404; /funds/118778/meta returns scheme_name + earliest_nav_date=2013-01-31 + latest_nav_date + nav_points>1000; /funds/recent returns 118778 with enriched FQS fields after analyze; /refresh/status works; POST /refresh/run completes (1/1 schemes in ~1.2s) and updates last_run; removed endpoints /funds/top, /goal/calculate, /goal/check all return 404. Frontend Expo web preview verified at 390x844 mobile viewport: Home renders title 'Analyse a Fund', search input (testID fund-search-input), refresh-status card 'Last NAV refresh 33s ago · 1 schemes', RECENTLY ANALYSED section with Nippon row (90 ELITE pill, XIRR 23.1%, 1-13Y), bottom tabs are Funds + Methodology only (no Planner). Search 'nippon small' debounces and shows multiple matching schemes; tapping result-118778 navigates to /fund/118778. Fund detail renders: scheme name, SMALL CAP chip, '161 monthly NAVs · 2013-01 → 2026-05', 4 headline cells (Headline FQS 90 Elite, XIRR since 23.13% 2013-01, Cycle Robustness 78.0, Stability 10Y/5Y 1.94), Start date filter row 'since inception', ROLLING HORIZON 1Y-20Y picker (1Y=59, 2Y=59, 3Y=64, 4Y=64, 5Y=63, 6Y=68, etc.), 10Y DISTRIBUTION METRICS section by default (Horizon 10 years, Min WM Required 2.5930x, N Windows 42, Min WM 2.7673x, Max WM 4.5293x, Median 3.6540x, Mean 3.6912x, Std 0.4108…), SUB-SCORES section, and horizontal-scrollable rolling windows table. Tapping 5Y chip switches to '5Y DISTRIBUTION METRICS' header. Tapping start-date row opens bottom-sheet modal with all 6 presets (Since inception/Last 10/Last 5/Last 3/Since 2020/Since 2015), YYYY-MM-DD custom input, and CANCEL/APPLY buttons. Tapping 'Since 2020' applies filter (row shows '2020-01-01') and recomputes — 10Y chip is now disabled (aria-disabled=true). Methodology tab loads with 'FQS Model' title, pipeline steps (1-7), wealth multiple explainer, and MIN WM benchmark category rows (Small Cap visible).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "fund-detail headline strip", "issues": ["Headline cell labels (HEADLINE FQS / XIRR SINCE / CYCLE ROBUSTNESS / STABILITY 10Y/5Y) truncate to '…' on 390px-wide phones because all 4 cells share one row with numberOfLines={1}. Values render fine; only the small label line is clipped. Consider 2-line labels or 2x2 grid layout on narrow screens."]}
+    ],
+    "react_native_issues": [
+      {"component": "react-native-web (dependency)", "issue": "Console warning 'props.pointerEvents is deprecated. Use style.pointerEvents'. Non-blocking; same warning seen in previous iterations, originates from a transitive dependency."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_mf_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional) The PRD lists n_windows formula as 'monthly_points - 12' for 1Y and 'monthly_points - 119' for 10Y. The actual (and correct) formula in fqs_engine.compute_rolling_windows is m - n + 1 (e.g. 1Y=150, 10Y=42). PRD wording is off-by-one; expected counts in the PRD ('~150', '~42') match the engine. No code change needed — just align future PRD text.",
+    "(Optional polish) Consider 2-line labels or smaller font for the 4 headline cells on fund detail so SMALL/MID-cap phones don't truncate 'CYCLE ROBUSTNESS' / 'STABILITY 10Y/5Y'.",
+    "(Optional) server.py still uses deprecated @app.on_event('startup'/'shutdown') hooks; migrate to FastAPI lifespan handler."
+  ],
+  "critical_code_review_comments": [
+    "server.py uses deprecated FastAPI on_event hooks for the daily-refresh scheduler. Functional but emits deprecation warnings.",
+    "fqs_engine.compute_rolling_windows iterates every window O(N*H) — fine at H≤20 and N≤300, but if horizon list ever grows, consider an incremental sliding-sum optimisation.",
+    "_extrapolate_min_wm imports CATEGORY_TABLE inside the function (lazy import) and shadows the outer xirr name with the category xirr value — readable, but the local rebinding of 'xirr' is confusing next to the pyxirr import at top of file."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_mf_api.py (rewritten for the new MF API contract: search, analyze + start_date, meta, recent, refresh/status, refresh/run, removed-endpoint 404s)",
+    "/app/backend/tests/test_goal_check.py (deleted — endpoints removed)",
+    "/app/test_reports/pytest/pytest_results.xml (regenerated)"
+  ],
+  "success_rate": { "backend": "100% (14/14)", "frontend": "100% (all 5 PRD flows verified)" },
+  "seed_data_creation": "Calling /api/funds/118778/analyze (twice — once default, once with start_date=2018-01-01) implicitly seeds fund_recent and fund_analysis collections. POST /api/refresh/run also seeds refresh_log singleton.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Public URL: https://fund-scorer.preview.emergentagent.com. Pytest file: /app/backend/tests/test_mf_api.py (14 tests, runs in ~7s). MF API key endpoints: /api/funds/search, /api/funds/{code}/analyze (?start_date=YYYY-MM-DD&refresh=1), /api/funds/{code}/meta, /api/funds/recent, /api/refresh/status, POST /api/refresh/run. Removed: /funds/top, /goal/calculate, /goal/check (all 404). Frontend testIDs (verified working): fund-search-input, search-clear, search-result-{code}, recent-list, recent-row-{code}, refresh-status, fund-detail-name, hard-refresh, open-start-date, clear-start-date, horizon-row, horizon-chip-{1..20}, dm-{horizon}, windows-{horizon}, date-preset-since-inception/last-10-years/last-5-years/last-3-years/since-2020/since-2015, date-input, date-cancel, date-apply. Tab testIDs tab-funds/tab-insights exist on native but on web use get_by_text('Funds'|'Methodology'). Nippon Small Cap (118778) is the canonical test fund — 161 monthly points, 13 available horizons (1Y..13Y), headline FQS 90 Elite, XIRR ~23.1%. The /api/refresh/run can be safely re-run between tests (idempotent; ~1s for one cached scheme).",
+  "rca_of_issue": "N/A — no bugs found. One off-by-one inconsistency between the PRD text and the engine formula was resolved by aligning the test to the engine (which matches the PRD's numeric examples)."
+}

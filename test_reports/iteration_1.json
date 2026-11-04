@@ -1,0 +1,39 @@
+{
+  "summary": "Backend: 12/12 pytest tests pass (health, top funds, search single+multi-token, analyze for Nippon Small Cap/Parag Parikh/UTI Nifty Index incl. category classification + XIRR range + cache speed, 404 for invalid code, goal calc for age=32 and age=55). Frontend: Funds home renders Top Funds title + OUR PICKS · TOP 3 podium + FULL RANKING + search input; tapping Podium #1 navigates to fund detail; FQS gauge, headline stats, KPI cards and horizon tabs all render; switching 3Y/5Y horizons works; search 'parag' returns AMFI results and tapping one navigates to detail; Planner with preset ₹1Cr/10Y/age32 produces Monthly SIP ₹43,471 with Equity 68% / Debt 32% bar, sub-allocation, totals; Insights tab shows methodology/pipeline/tiers/components. All 18 curated funds analysed; top FQS = 94 (Parag Parikh Flexi Cap).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {
+        "component": "app/(tabs)/_layout.tsx",
+        "issue": "tabBarTestID prop is NOT rendered as data-testid on the bottom-tab anchor in expo-router web (links carry role='tab' only, no data-testid). Tabs still work via visible text label so this does not block users, but it makes automated tab-switch tests brittle. Suggested fix: also set tabBarAccessibilityLabel or wrap tabBar with a custom component that forwards testID."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_mf_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Optional: make bottom-tab testIDs work in web (tabBarTestID isn't honored by the web renderer in expo-router). Workaround: tests can tap by visible text ('Planner', 'Insights')."
+  ],
+  "critical_code_review_comments": [
+    "server.py uses @app.on_event('shutdown') which is deprecated in FastAPI; consider lifespan handlers (non-blocking).",
+    "Cache TTL of 12h is fine for NAV data; consider also re-warming /api/funds/top via a background task on cold start to avoid the first user paying the 10-15s cost."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_mf_api.py (new)",
+    "/app/backend/tests/__init__.py (new)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "seed_data_creation": "None — backend pulls live data from api.mfapi.in; MongoDB only caches analyses.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend public URL is https://fund-scorer.preview.emergentagent.com. Pytest file at /app/backend/tests/test_mf_api.py covers all critical endpoints. Frontend tabs cannot be selected by data-testid='tab-planner' etc. — use page.get_by_text('Planner').click(force=True). Fund detail testIDs that work: fund-detail-name, horizon-tab-{3|5|10|15}, horizon-section-{n}, kpi-success/risk/blended/p10/es/cv. Planner testIDs: goal-target, goal-years, goal-age, preset-₹1Cr (₹ char must be present), horizon-10, goal-calculate, goal-result. Note Parag Parikh fund has only 10Y of history so the 15Y horizon tab is disabled — expected behavior.",
+  "rca_of_issue": "N/A — no bugs found that need RCA."
+}

@@ -1,0 +1,38 @@
+{
+  "summary": "Validated new POST /api/goal/check endpoint and new SIP-first mode in /planner. Backend: 6/6 pytest tests pass (short-by-a-bit @25k/15Y/1.5Cr/32 → expected_corpus≈₹1.25Cr, gap≈₹25L, coverage≈83%, verdict='Short by a bit', extra_sip≈₹5025, required_xirr≈0.139, allocation 68/32 with Small Cap=15; on-track @50k/10Y/50L/35 → 100% coverage, gap≤0, verdict='On track', extra_sip=0, required_xirr=0; significant-gap @5k/5Y/1Cr/25 → coverage<10%, verdict='Significant gap'; age=55 → equity 45/debt 55; -ve SIP rejected with 422; legacy /api/goal/calculate still returns ₹43,471 for ₹1Cr/10Y/32). Frontend: Planner renders ArthVruksh branding header ('ARTHVRUKSH · YOUR GOALS, OUR GUIDANCE' + 'Goals → Plan → SIP → Review → Achieve'), both mode pills (mode-goal active by default, mode-sip), tapping mode-sip switches form to MONTHLY SIP / TENURE / END GOAL / YOUR AGE with the documented presets and a CHECK MY PLAN button. With defaults (25k/10Y/1.5Cr/32) sip-result hero renders 'SIGNIFICANT GAP' verdict, projected ₹57.51 L, 38% coverage bar with 'Goal: ₹1.50 Cr' label; sip-gap section appears showing 'Shortfall: ₹92.49 L', 'Add ₹40,206/month', 'Or earn 27.1% XIRR (+15.1%)'. With 50k/10Y/50L on-track scenario, hero shows ON TRACK with green styling and sip-gap section is hidden. Switching back to mode-goal preserves CALCULATE PLAN → MONTHLY SIP NEEDED ₹43,471 hero. Asset allocation bar and equity sub-allocation list both render. All wiring through POST /api/goal/check and POST /api/goal/calculate confirmed in backend logs.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {
+        "component": "global",
+        "issue": "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents'. Non-blocking; comes from a dependency (react-native-web)."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_goal_check.py",
+    "/app/backend/tests/test_mf_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Note that the frontend's `years` state is shared between Goal mode and SIP mode. If the user enters 15Y in Goal mode then switches to SIP mode, the tenure carries over (which is fine), but the SIP-mode 'defaults' are effectively 25k/<whatever-years-is>/1.5Cr/32. The PRD-described default 10Y still holds on first load."
+  ],
+  "critical_code_review_comments": [
+    "server.py still uses @app.on_event('shutdown') (deprecated in FastAPI). Consider lifespan handler.",
+    "planner.tsx is now 577 lines — close to the 700-line threshold; could split SipResultBlock/GoalResultBlock into separate files for readability.",
+    "The bisection in _solve_required_xirr is capped at 150% annual; ultra-aggressive scenarios (e.g. 5k SIP → ₹1Cr in 5Y, which needs ~71%) still resolve, but extreme scenarios may saturate at ~1.5. Acceptable for current use."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_goal_check.py (new)",
+    "/app/test_reports/pytest/pytest_results.xml (regenerated)"
+  ],
+  "success_rate": { "backend": "100% (6/6)", "frontend": "100%" },
+  "seed_data_creation": "None.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Public URL: https://fund-scorer.preview.emergentagent.com. Backend tests live in /app/backend/tests/ (test_mf_api.py = funds/search/analyze/goal_calc, test_goal_check.py = new SIP→Goal flow). Planner testIDs: mode-goal, mode-sip, mode-toggle, goal-target/goal-years/goal-age/goal-calculate/goal-result, sip-amount/sip-years/sip-target/sip-age/sip-calculate/sip-result/sip-gap. Note the `years` state is shared across Goal and SIP modes (intentional). Tabs still cannot be selected by tabBarTestID on web — use get_by_text('Planner').",
+  "rca_of_issue": "N/A — feature working as designed."
+}

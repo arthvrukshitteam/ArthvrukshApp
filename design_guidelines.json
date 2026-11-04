@@ -1,0 +1,114 @@
+{
+  "theme": "DARK",
+  "archetype": "High-Contrast Premium Data (Archetype 4 + 5 Hybrid)",
+  "rationale": "For a mutual fund analysis app, the user needs to trust the data implicitly. We avoid the 'fintech bro' neon look and the generic 'SaaS purple'. Instead, we use an authoritative Dark Slate base reminiscent of Bloomberg terminals but elevated with luxury styling. Data is front and center with IBM Plex Sans. The proprietary FQS score acts as the bold, confident centerpiece.",
+  "colors": {
+    "background": {
+      "default": "#07090E",
+      "card": "#11141C",
+      "elevated": "#1A1F2B"
+    },
+    "text": {
+      "primary": "#F8FAFC",
+      "secondary": "#94A3B8",
+      "tertiary": "#64748B",
+      "disabled": "#334155"
+    },
+    "accents": {
+      "emerald": "#059669",
+      "amber": "#D97706",
+      "ruby": "#DC2626",
+      "azure": "#2563EB"
+    },
+    "fqs_tiers": {
+      "elite_90_plus": "#10B981",
+      "strong_80_90": "#3B82F6",
+      "good_70_80": "#F59E0B",
+      "average_60_70": "#F97316",
+      "weak_below_60": "#EF4444"
+    },
+    "borders": {
+      "default": "rgba(255, 255, 255, 0.08)",
+      "focus": "rgba(255, 255, 255, 0.2)"
+    }
+  },
+  "typography": {
+    "primary_font": "Sora",
+    "primary_font_fallback": "sans-serif",
+    "data_font": "IBM Plex Sans",
+    "data_font_fallback": "monospace",
+    "scales": {
+      "h1": { "fontSize": 32, "lineHeight": 40, "fontFamily": "Sora-Bold", "letterSpacing": -1 },
+      "h2": { "fontSize": 24, "lineHeight": 32, "fontFamily": "Sora-SemiBold", "letterSpacing": -0.5 },
+      "h3": { "fontSize": 20, "lineHeight": 28, "fontFamily": "Sora-Medium" },
+      "body": { "fontSize": 16, "lineHeight": 24, "fontFamily": "IBMPlexSans-Regular" },
+      "body_sm": { "fontSize": 14, "lineHeight": 20, "fontFamily": "IBMPlexSans-Regular" },
+      "data_large": { "fontSize": 48, "lineHeight": 56, "fontFamily": "IBMPlexSans-Bold", "letterSpacing": -1.5 },
+      "data_label": { "fontSize": 12, "lineHeight": 16, "fontFamily": "IBMPlexSans-Medium", "letterSpacing": 1, "textTransform": "uppercase" }
+    },
+    "rules": "Never use Inter or Roboto. Sora is strictly for headings and expressive marketing areas (like the top of the Goal Planner). IBM Plex Sans is mandatory for ALL numbers, tables, ticker symbols, and FQS scores to ensure tabular lining and crisp legibility."
+  },
+  "spacing_and_layout": {
+    "container_padding": 16,
+    "card_padding": 20,
+    "gap_sm": 8,
+    "gap_md": 16,
+    "gap_lg": 24,
+    "gap_xl": 32,
+    "border_radius": {
+      "sm": 8,
+      "md": 12,
+      "lg": 16,
+      "pill": 9999
+    },
+    "rules": "Adopt the 'Control Room' grid philosophy tailored for mobile. Maximize horizontal space. Use strictly 1px borders (rgba(255, 255, 255, 0.08)) to separate list items rather than wrapping everything in bulky cards."
+  },
+  "components": {
+    "fqs_badge": {
+      "description": "The hero element of the Fund Detail screen. Do not make it a standard progress ring.",
+      "style": "A massive, stark data point (data_large scale) centered on screen. Surrounding it is an abstract semi-circle gauge using SVG. The color of the text and the gauge strictly inherits from the fqs_tiers palette based on the score.",
+      "sub_elements": "Include the Tier Label (e.g., 'ELITE') in data_label typography directly below the score."
+    },
+    "data_table_row": {
+      "description": "Used in the Top Funds list and Search results.",
+      "layout": "Row flex. Left side: Fund Name (truncate 1 line) + Scheme Code / Category (body_sm, text.secondary). Right side: FQS Badge (miniature, filled background pill with text color matching the tier).",
+      "interaction": "Highlight background slightly on press. Active state opacity 0.7."
+    },
+    "horizon_tabs": {
+      "description": "3Y / 5Y / 10Y / 15Y selector for rolling windows.",
+      "style": "Segmented control style but borderless. Background: card (#11141C). Selected tab gets a bottom border (2px) of the accent color (azure) and text becomes primary white. Unselected text is secondary (#94A3B8)."
+    },
+    "kpi_cards": {
+      "description": "Used for FQS Component breakdown (Success Rate, Adj Risk, etc).",
+      "style": "Dense rectangular blocks (border_radius.sm). 1px border. Value (IBM Plex Sans) on top, label on bottom. Include a horizontal micro-progress bar at the bottom of the card indicating the 0-100 sub-score."
+    },
+    "bottom_nav": {
+      "style": "Dark translucent background. If Expo BlurView is available, use dark blur. Icons should be sharp and angular (Phosphor Icons or Lucide). Active icon is primary text color + 4px dot below it. Inactive is disabled text color."
+    },
+    "charts": {
+      "library_recommendation": "react-native-gifted-charts or victory-native",
+      "style": "Distribution charts (Wealth Multiple, XIRR) must be area charts or histograms. Fill with vertical gradients (Accent to transparent). No grid lines except a subtle dotted zero-baseline."
+    },
+    "search_bar": {
+      "style": "Deep dark input (#07090E) with a 1px border (#1A1F2B). Left search icon, placeholder in text.tertiary. Use a clear button on the right when populated."
+    }
+  },
+  "motion": {
+    "fqs_reveal": "On Fund Detail mount, the FQS score should count up from 0 to its value quickly (duration: 800ms). The SVG gauge should draw its stroke matching the count up.",
+    "tab_switch": "Content below horizon tabs should fade in and slightly translate up (10px) on tab change to feel highly responsive.",
+    "list_stagger": "Top funds list items should stagger in with opacity and slight Y-translation."
+  },
+  "media_and_assets": {
+    "icons": "Lucide React Native (lucide-react-native).",
+    "illustrations": "Keep minimal. Avoid generic vector art. Rely on clean typography and chart geometry as the primary visual interest."
+  },
+  "instructions_to_main_agent": [
+    "You are building a React Native Expo SDK 54 app, NOT a web React app. Use <View>, <Text>, <ScrollView>, etc.",
+    "Do NOT use HTML tags (<div>, <span>). Do not use web CSS classes if NativeWind is not configured; if using standard React Native, use StyleSheet.create().",
+    "ALL interactive elements (Pressable, TouchableOpacity, TextInput) MUST include a testID attribute (e.g. testID='fund-search-input') instead of data-testid (which is for web).",
+    "For the custom fonts (Sora, IBM Plex Sans), assume you need to load them via expo-font. If not strictly available, fallback to default system fonts but enforce weights.",
+    "Implement the proprietary FQS component as the primary focal point of the fund detail page.",
+    "For charts, use 'react-native-gifted-charts' or 'victory-native'. Do not use Recharts as it is web-only.",
+    "For icons, install 'lucide-react-native' and 'react-native-svg'."
+  ]
+}

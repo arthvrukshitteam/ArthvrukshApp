@@ -1,0 +1,26 @@
+name: keepalive
+
+# Pings the backend every 8 minutes so Render's free tier never spins down.
+# Cost: ~5400 free Actions minutes/month → uses ~50/month for this workflow.
+
+on:
+  schedule:
+    - cron: "*/8 * * * *"          # every 8 minutes
+  workflow_dispatch:                # manual trigger button
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /api/health
+        env:
+          URL: ${{ secrets.BACKEND_URL }}
+        run: |
+          if [ -z "$URL" ]; then
+            echo "ERROR: GitHub secret BACKEND_URL is not set."
+            exit 1
+          fi
+          code=$(curl -s -o /tmp/body -w "%{http_code}" --max-time 90 "$URL/api/health")
+          echo "Status: $code"
+          cat /tmp/body
+          test "$code" = "200"

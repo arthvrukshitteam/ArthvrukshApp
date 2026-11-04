@@ -1,0 +1,17 @@
+# MF Analyst backend — minimal runtime deps.
+# Only includes packages actually imported by server.py / amfi_client.py /
+# fqs_engine.py / category_map.py and their direct dependencies that pip
+# can resolve. Keeps Render free-tier build under ~90s.
+
+fastapi==0.110.1
+uvicorn[standard]==0.25.0
+motor==3.3.1
+pymongo==4.5.0
+httpx==0.28.1
+pyxirr==0.10.8
+python-dotenv==1.0.1
+pydantic==2.6.4
+
+# Test-only (Render won't install dev unless used; harmless to keep)
+pytest==8.1.1
+requests==2.31.0

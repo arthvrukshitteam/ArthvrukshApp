@@ -1,0 +1,95 @@
+name: daily-nav-refresh
+
+# Fires three separate nightly jobs at 22:00 UTC = 03:30 IST (next day):
+#
+#   1. POST /api/refresh/run     — recompute analysis for funds viewed in the
+#      last 30 days (narrow, fast — the "recently-viewed cache" job).
+#   2. POST /api/fqs/refresh     — full-universe SIP FQS batch: every fund in
+#      fund_nav_meta, including the fqs_by_horizon_2010 numbers the Home
+#      screen's "Since 2010" toggle reads.
+#   3. POST /api/lumpsum/refresh — same, for the Lumpsum universe/horizons_2010.
+#
+# All three were previously ONLY scheduled via an in-process asyncio task
+# inside the FastAPI server (see server.py's _fqs_refresh_scheduler /
+# _lumpsum_refresh_scheduler) — which only fires if the process survives
+# uninterrupted from server startup through to its 22:30/23:00 UTC trigger
+# time. On Render's free tier the process restarts often enough (deploys,
+# idle-timeout spin-down/wake) that this silently skipped days at a time —
+# proven live: the "Since 2010" toggle produced byte-identical output on/off
+# because fqs_by_horizon_2010/horizons_2010 had never been (re)computed since
+# before that feature shipped. This external cron is the fix — jobs 2 and 3
+# are fire-and-forget (the endpoint kicks off a background asyncio task and
+# returns immediately; the actual multi-hour batch runs after this workflow
+# finishes), and each is guarded server-side against overlapping with the
+# in-process scheduler also firing (an "already_running" no-op, not an error).
+
+on:
+  schedule:
+    - cron: "0 22 * * *"             # 22:00 UTC every day
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25              # Jobs 2 and 3 return immediately (they
+                                      # spawn a background task). Job 1 runs
+                                      # synchronously, so its curl is capped at
+                                      # 1200s — comfortably under this, so a
+                                      # slow endpoint fails that STEP with a
+                                      # curl timeout rather than silently
+                                      # burning the whole job budget.
+    steps:
+      - name: POST /api/refresh/run
+        env:
+          URL: ${{ secrets.BACKEND_URL }}
+          TOKEN: ${{ secrets.REFRESH_TOKEN }}
+        run: |
+          # REFRESH_TOKEN is OPTIONAL. The server only enforces it when it has
+          # REFRESH_TOKEN set in its own environment:
+          #
+          #     expected = os.environ.get("REFRESH_TOKEN")
+          #     if expected and token != expected: 401
+          #
+          # Hard-requiring the secret here is what made every scheduled run
+          # fail ~6s in with "BACKEND_URL or REFRESH_TOKEN secret is missing"
+          # — the repo only ever had BACKEND_URL — so none of the three POSTs
+          # below has ever fired, and the nightly batch has only ever run on
+          # the in-process scheduler that Render's restarts keep killing.
+          #
+          # Set REFRESH_TOKEN in BOTH places (GitHub secret + Render env var)
+          # to gate these endpoints; leave both unset to leave them open.
+          if [ -z "$URL" ]; then
+            echo "ERROR: BACKEND_URL secret is missing."
+            exit 1
+          fi
+          if [ -z "$TOKEN" ]; then
+            echo "NOTE: no REFRESH_TOKEN secret — calling without a token."
+            echo "      Set it here AND on Render to gate these endpoints."
+          fi
+          code=$(curl -s -o /tmp/body -w "%{http_code}" --max-time 1200 \
+                 -X POST "$URL/api/refresh/run${TOKEN:+?token=$TOKEN}")
+          echo "Status: $code"
+          cat /tmp/body
+          test "$code" = "200"
+
+      - name: POST /api/fqs/refresh (full universe, incl. Since-2010 numbers)
+        env:
+          URL: ${{ secrets.BACKEND_URL }}
+          TOKEN: ${{ secrets.REFRESH_TOKEN }}
+        run: |
+          code=$(curl -s -o /tmp/body -w "%{http_code}" --max-time 60 \
+                 -X POST "$URL/api/fqs/refresh${TOKEN:+?token=$TOKEN}")
+          echo "Status: $code"
+          cat /tmp/body
+          test "$code" = "200"
+
+      - name: POST /api/lumpsum/refresh (full universe, incl. Since-2010 numbers)
+        env:
+          URL: ${{ secrets.BACKEND_URL }}
+          TOKEN: ${{ secrets.REFRESH_TOKEN }}
+        run: |
+          code=$(curl -s -o /tmp/body -w "%{http_code}" --max-time 60 \
+                 -X POST "$URL/api/lumpsum/refresh${TOKEN:+?token=$TOKEN}")
+          echo "Status: $code"
+          cat /tmp/body
+          test "$code" = "200"
