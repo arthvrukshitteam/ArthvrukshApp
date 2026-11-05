@@ -11,18 +11,18 @@
  * date-filter modal, and the small DataRow/HeadCell primitives both
  * calculation views render into.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View, Text, StyleSheet, ScrollView, Pressable, Modal, TextInput,
   KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback, ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
-import { Calendar, RefreshCw, X, CheckCircle2, AlertTriangle, Filter, Info, History, PlusCircle, Briefcase } from "lucide-react-native";
+import { Calendar, RefreshCw, X, CheckCircle2, AlertTriangle, Filter, Info, History, PlusCircle, Briefcase, GitBranch } from "lucide-react-native";
 import { radii, space, type ThemeColors, type ThemeType } from "@/src/theme";
 import { useTheme } from "@/src/ThemeProvider";
 import { InfoHint } from "@/src/components/InfoHint";
-import { api, type LineageExplanation } from "@/src/api";
+import { api, type AmcPeriods } from "@/src/api";
 import { CollapsibleSection } from "@/src/components/CollapsibleSection";
 
 // ─── helpers ──────────────────────────────────────────────────────────────
@@ -30,6 +30,85 @@ import { CollapsibleSection } from "@/src/components/CollapsibleSection";
 export function backYears(n: number): string {
   const d = new Date(); d.setFullYear(d.getFullYear() - n);
   return d.toISOString().slice(0, 10);
+}
+
+/** Route params Home (and other screens) pass to Fund Detail. */
+export type DetailRouteParams = {
+  code: string;
+  horizon?: string;
+  since2010?: string;
+  mgmt?: string;
+  contDate?: string;
+  /** A Home card's chosen AMC period start (YYYY-MM-DD): score from that
+   *  date across every management since, predecessor history included. */
+  amcStart?: string;
+};
+
+/** Translate Home's card state into this screen's (startDate,
+ *  includePredecessor) and the note explaining why they're pre-set.
+ *
+ *  - amcStart: the AMC period the advisor picked on the card.
+ *  - mgmt + contDate: the latest verified break; own-code history only,
+ *    matching fqs_refresh's continuity pass.
+ *  - since2010: start forced to 2010-01-01, matching fqs_by_horizon_2010. */
+export function initialBasis(p: Partial<DetailRouteParams>): {
+  startDate: string | null; includePredecessor: boolean; note: string | null;
+} {
+  const suffix = "matching your Home screen selection.";
+  if (p.amcStart) {
+    return {
+      startDate: p.amcStart,
+      includePredecessor: true,
+      note: `AMC period — scored from ${p.amcStart} onward, ${suffix}`,
+    };
+  }
+  if (p.mgmt === "1" && p.contDate) {
+    return {
+      startDate: p.contDate,
+      includePredecessor: false,
+      note: `Separate management periods — showing history from ${p.contDate} onward, ${suffix}`,
+    };
+  }
+  if (p.since2010 === "1") {
+    return {
+      startDate: "2010-01-01",
+      includePredecessor: true,
+      note: `Since 2010 — showing history from 2010-01-01 onward, ${suffix}`,
+    };
+  }
+  return { startDate: null, includePredecessor: true, note: null };
+}
+
+/** Sequence guard for "latest request wins". `next()` tags a request,
+ *  `isLatest(n)` says whether a newer one has started since. */
+export function useLatestRequest() {
+  const seq = useRef(0);
+  const next = useCallback(() => ++seq.current, []);
+  const isLatest = useCallback((n: number) => n === seq.current, []);
+  return useMemo(() => ({ next, isLatest }), [next, isLatest]);
+}
+
+/** Inline notice while a filter change is being recomputed, so the numbers
+ *  below are never silently stale. */
+export function RecomputingNotice({ visible, startDate }: { visible: boolean; startDate: string | null }) {
+  const { colors, type } = useTheme();
+  if (!visible) return null;
+  return (
+    <View
+      style={{
+        flexDirection: "row", alignItems: "center", gap: 8,
+        marginHorizontal: space.md, marginTop: space.sm,
+        paddingHorizontal: space.md, paddingVertical: 10,
+        borderRadius: radii.md, backgroundColor: colors.azureSoft,
+      }}
+      accessibilityLiveRegion="polite"
+    >
+      <ActivityIndicator size="small" color={colors.azure} />
+      <Text style={[type.bodySm, { color: colors.azure, fontWeight: "600", flex: 1 }]}>
+        Recalculating {startDate ? `from ${startDate}` : "for full history"}… numbers below update when ready.
+      </Text>
+    </View>
+  );
 }
 
 export function shortErr(msg: string): string {
@@ -375,31 +454,47 @@ export function FundDetailBanners({
 // ─── start-date filter row + modal ──────────────────────────────────────────
 
 export function StartDateFilterRow({
-  startDate, onOpen, onClear, label = "Start date filter:",
+  startDate, onOpen, onClear, busy = false, label = "Start date filter:",
 }: {
   startDate: string | null;
   onOpen: () => void;
   onClear: () => void;
+  busy?: boolean;
   label?: string;
 }) {
   const { colors, type } = useTheme();
   const styles = useMemo(() => makeStyles(colors, type), [colors, type]);
+  // The clear button is a SIBLING of the row's press target, not nested in
+  // it: nested, a tap on the X also bubbled to the row on web and reopened
+  // the date modal pre-filled with the date just cleared.
   return (
-    <Pressable
-      onPress={onOpen}
-      style={({ pressed }) => [styles.filterRow, pressed && { opacity: 0.85 }]}
-    >
-      <Filter size={14} color={colors.azure} />
-      <Text style={[type.bodySm, { color: colors.textPri, marginLeft: 8, flex: 1 }]}>
-        {label} <Text style={{ fontWeight: "700" }}>{startDate ?? "since inception"}</Text>
-      </Text>
+    <View style={styles.filterRow}>
+      <Pressable
+        onPress={onOpen}
+        accessibilityRole="button"
+        accessibilityLabel="Change start date filter"
+        style={({ pressed }) => [{ flex: 1, flexDirection: "row", alignItems: "center" }, pressed && { opacity: 0.85 }]}
+      >
+        <Filter size={14} color={colors.azure} />
+        <Text style={[type.bodySm, { color: colors.textPri, marginLeft: 8, flex: 1 }]}>
+          {label} <Text style={{ fontWeight: "700" }}>{startDate ?? "since inception"}</Text>
+        </Text>
+        {busy
+          ? <ActivityIndicator size="small" color={colors.azure} style={{ marginLeft: 8 }} />
+          : <Calendar size={14} color={colors.textSec} style={{ marginLeft: 8 }} />}
+      </Pressable>
       {startDate && (
-        <Pressable onPress={onClear} hitSlop={8}>
-          <X size={14} color={colors.textTer} />
+        <Pressable
+          onPress={onClear}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Remove start date filter"
+          style={{ marginLeft: 10, padding: 2 }}
+        >
+          <X size={15} color={colors.textSec} />
         </Pressable>
       )}
-      <Calendar size={14} color={colors.textSec} style={{ marginLeft: 8 }} />
-    </Pressable>
+    </View>
   );
 }
 
@@ -464,107 +559,135 @@ export function PredecessorToggleRow({
 // already uses, so "select this year" and "add to portfolio from here" reuse
 // the app's one existing start-date/portfolio flow end to end.
 
+/** "2016-09-20" → "2016–2026": the period an AMC break opens, up to today. */
+export function amcPeriodLabel(isoDate: string): string {
+  return `${isoDate.slice(0, 4)}–${new Date().getFullYear()}`;
+}
+
 export function AmcHistorySection({
-  schemeCode, onSelectYear,
+  schemeCode, activeStart, onSelectPeriod,
 }: {
   schemeCode: number;
-  /** Wire this to the SAME setStartDate the StartDateModal above uses, so
-   *  tapping an AMC-change date re-runs the fund's existing start-date
-   *  filter from that date — no separate flow. */
-  onSelectYear?: (isoDate: string) => void;
+  /** The start date currently applied on screen — highlights the matching period. */
+  activeStart: string | null;
+  /** Re-runs the screen's own start-date filter from the period's start
+   *  (null = full history), so a period choice and the date picker are the
+   *  same mechanism end to end. */
+  onSelectPeriod?: (isoDate: string | null) => void;
 }) {
   const { colors, type } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, type), [colors, type]);
   const [state, setState] = useState<{
-    loading: boolean; data: LineageExplanation | null; notFound: boolean; error: string | null;
-  }>({ loading: true, data: null, notFound: false, error: null });
+    loading: boolean; data: AmcPeriods | null; error: string | null;
+  }>({ loading: true, data: null, error: null });
 
   useEffect(() => {
     let cancelled = false;
-    setState({ loading: true, data: null, notFound: false, error: null });
-    api.lineage(schemeCode)
-      .then((d) => { if (!cancelled) setState({ loading: false, data: d, notFound: false, error: null }); })
+    setState({ loading: true, data: null, error: null });
+    api.amcPeriods(schemeCode)
+      .then((d) => { if (!cancelled) setState({ loading: false, data: d, error: null }); })
       .catch((e: any) => {
-        if (cancelled) return;
-        const msg = String(e?.message || e);
-        if (/\b404\b/.test(msg)) setState({ loading: false, data: null, notFound: true, error: null });
-        else setState({ loading: false, data: null, notFound: false, error: shortErr(msg) });
+        if (!cancelled) setState({ loading: false, data: null, error: shortErr(String(e?.message || e)) });
       });
     return () => { cancelled = true; };
   }, [schemeCode]);
 
-  const amcChanges = (state.data?.corporate_actions ?? [])
-    .filter((a) => a.type === "AMC_CHANGE" && a.effective_date)
-    .slice()
-    .reverse(); // most recent first
+  const breaks = state.data?.breaks ?? [];
 
   return (
     <CollapsibleSection
-      title="AMC History"
+      // Remounted once data arrives so a fund WITH management changes opens
+      // expanded — the period choice is the point of this section.
+      key={state.data ? "loaded" : "pending"}
+      title="AMC History & Periods"
       subtitle={
         state.data
-          ? amcChanges.length
-            ? `${amcChanges.length} AMC change${amcChanges.length === 1 ? "" : "s"} on record`
+          ? breaks.length
+            ? `${breaks.length} management change${breaks.length === 1 ? "" : "s"} on record — pick a starting period`
             : "No AMC change on record"
-          : undefined
+          : state.loading ? "Loading…" : undefined
       }
+      initiallyOpen={breaks.length > 0}
     >
       {state.loading && (
         <View style={{ paddingVertical: 16, alignItems: "center" }}>
           <ActivityIndicator color={colors.azure} />
         </View>
       )}
-      {state.notFound && (
-        <Text style={[type.bodySm, { color: colors.textSec, padding: space.sm }]}>
-          AMC history hasn't been built for this fund yet. Run the lineage build
-          (POST /api/admin/build-lineage) to populate it.
-        </Text>
-      )}
       {state.error && (
         <Text style={[type.bodySm, { color: colors.amber, padding: space.sm }]}>{state.error}</Text>
       )}
       {state.data && (
-        <View style={{ padding: space.sm }}>
-          {amcChanges.length === 0 ? (
+        <View style={{ padding: space.sm, gap: 8 }}>
+          {state.data.current_amc ? (
+            <Text style={[type.bodySm, { color: colors.textPri }]}>
+              Currently managed by <Text style={{ fontWeight: "700" }}>{state.data.current_amc}</Text>
+            </Text>
+          ) : null}
+          {breaks.length === 0 ? (
             <Text style={[type.bodySm, { color: colors.textSec }]}>
-              {state.data.resolved_to.amc ?? "The current fund house"} appears to have managed
-              this scheme throughout its observed history — no AMC change found.
+              No AMC change or merger is recorded for this scheme, so its whole history
+              belongs to the current fund house.
             </Text>
           ) : (
             <>
-              <Text style={[type.bodySm, { color: colors.textPri, marginBottom: 8 }]}>
-                Currently managed by{" "}
-                <Text style={{ fontWeight: "700" }}>{state.data.resolved_to.amc}</Text>
+              <Text style={[type.bodySm, { color: colors.textSec }]}>
+                Each period scores the fund from that change onward, so performance from
+                before the change does not count. Pick the one you want to judge it on.
               </Text>
-              {amcChanges.map((a, i) => (
-                <Pressable
-                  key={`${a.effective_date}-${i}`}
-                  onPress={onSelectYear && a.effective_date ? () => onSelectYear(a.effective_date!) : undefined}
-                  disabled={!onSelectYear}
-                  style={({ pressed }) => [
-                    styles.filterRow, { marginBottom: 8 },
-                    pressed && onSelectYear ? { opacity: 0.85 } : null,
-                  ]}
-                >
-                  <Text style={[type.bodySm, { color: colors.textPri, flex: 1 }]}>
-                    <Text style={{ fontWeight: "700" }}>{a.effective_date}</Text>
-                    {"  "}{a.from} → {a.to}
-                  </Text>
-                  {onSelectYear && (
-                    <Text style={[type.bodySm, { color: colors.azure, fontWeight: "600" }]}>
-                      Use this date
-                    </Text>
-                  )}
-                </Pressable>
+              {breaks.map((b) => (
+                <PeriodOption
+                  key={b.date}
+                  label={amcPeriodLabel(b.date)}
+                  sub={`From ${b.date}${b.from && b.to ? ` · ${b.from} → ${b.to}` : ` · ${b.reason}`}`}
+                  active={activeStart === b.date}
+                  onPress={onSelectPeriod ? () => onSelectPeriod(b.date) : undefined}
+                />
               ))}
+              <PeriodOption
+                label="Full history"
+                sub={state.data.first_nav_date ? `Since ${state.data.first_nav_date}, every management` : "Every management since inception"}
+                active={activeStart === null}
+                onPress={onSelectPeriod ? () => onSelectPeriod(null) : undefined}
+              />
             </>
           )}
-          <Text style={[type.bodySm, { color: colors.textTer, marginTop: 6, fontStyle: "italic" }]}>
-            {state.data.coverage.caveat}
-          </Text>
+          {state.data.caveat ? (
+            <Text style={[type.bodySm, { color: colors.textTer, fontStyle: "italic" }]}>
+              {state.data.caveat}
+            </Text>
+          ) : null}
         </View>
       )}
     </CollapsibleSection>
+  );
+}
+
+function PeriodOption({
+  label, sub, active, onPress,
+}: { label: string; sub: string; active: boolean; onPress?: () => void }) {
+  const { colors, type } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected: active }}
+      style={({ pressed }) => ({
+        flexDirection: "row", alignItems: "center", gap: 10,
+        paddingHorizontal: space.md, paddingVertical: 10,
+        borderRadius: radii.md, borderWidth: 1.5,
+        borderColor: active ? colors.azure : colors.border,
+        backgroundColor: active ? colors.azureSoft : colors.bgCard,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <GitBranch size={14} color={active ? colors.azure : colors.textSec} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 14, fontWeight: "800", color: active ? colors.azure : colors.textPri }}>{label}</Text>
+        <Text style={[type.bodySm, { color: colors.textTer, marginTop: 2 }]} numberOfLines={2}>{sub}</Text>
+      </View>
+      {active && <CheckCircle2 size={16} color={colors.azure} />}
+    </Pressable>
   );
 }
 
@@ -727,8 +850,8 @@ export function HorizonChipRow({
 // too — no need to back out to Home, enter Select mode, and find it again.
 
 export function AddToPortfolioButton({
-  selected, onToggle,
-}: { selected: boolean; onToggle: () => void }) {
+  selected, onToggle, startDate = null,
+}: { selected: boolean; onToggle: () => void; startDate?: string | null }) {
   const { colors } = useTheme();
   return (
     <Pressable
@@ -748,6 +871,7 @@ export function AddToPortfolioButton({
         : <PlusCircle size={16} color="#fff" />}
       <Text style={[addS.btnText, { color: selected ? colors.tierElite : "#fff" }]}>
         {selected ? "Added to Portfolio — tap to remove" : "Add to Portfolio"}
+        {startDate ? ` · from ${startDate}` : ""}
       </Text>
     </Pressable>
   );

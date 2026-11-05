@@ -37,6 +37,9 @@ interface DraftAllocation {
   scheme_code: number;
   scheme_name: string;
   allocation: string; // percent, as typed, e.g. "25"
+  start_date: string | null;
+  include_predecessor: boolean;
+  explicit_basis: boolean;
 }
 
 export default function ProposalBuildScreen() {
@@ -51,7 +54,14 @@ export default function ProposalBuildScreen() {
   const horizon = Math.min(tenure ?? 7, MAX_CALC_YEARS);
 
   const [funds, setFunds] = useState<DraftAllocation[]>(() =>
-    selectedFunds.map((f) => ({ scheme_code: f.scheme_code, scheme_name: f.scheme_name, allocation: "" })),
+    selectedFunds.map((f) => ({
+      scheme_code: f.scheme_code,
+      scheme_name: f.scheme_name,
+      allocation: "",
+      start_date: f.start_date ?? null,
+      include_predecessor: f.include_predecessor ?? true,
+      explicit_basis: f.explicit_basis ?? false,
+    })),
   );
 
   const [clientName, setClientName] = useState("");
@@ -103,6 +113,11 @@ export default function ProposalBuildScreen() {
       const fundInputs: ProposalFundInput[] = funds.map((f) => ({
         scheme_code: f.scheme_code,
         allocation_pct: (parseFloat(f.allocation) || 0) / 100,
+        // The filter that was on screen when the fund was added — without
+        // this the proposal silently re-scored it since inception.
+        start_date: f.start_date,
+        include_predecessor: f.include_predecessor,
+        explicit_basis: f.explicit_basis,
       }));
       const res = await api.buildProposal({
         client_name: clientName.trim() || undefined,
@@ -201,7 +216,15 @@ export default function ProposalBuildScreen() {
         <Text style={styles.sectionTitle}>Allocation ({funds.length} fund{funds.length > 1 ? "s" : ""} selected)</Text>
         {funds.map((f) => (
           <View key={f.scheme_code} style={styles.fundRow}>
-            <Text style={styles.fundName} numberOfLines={2}>{f.scheme_name}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.fundName} numberOfLines={2}>{f.scheme_name}</Text>
+              {(f.start_date || !f.include_predecessor) && (
+                <Text style={styles.fundBasis}>
+                  {f.start_date ? `Scored from ${f.start_date}` : "Since inception"}
+                  {!f.include_predecessor ? " · new management only" : ""}
+                </Text>
+              )}
+            </View>
             <TextInput
               style={styles.allocInput}
               placeholder="%"
@@ -321,7 +344,8 @@ function makeStyles(colors: ThemeColors, type: ThemeType) {
       flexDirection: "row", alignItems: "center", gap: space.sm,
       paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
     },
-    fundName: { flex: 1, color: colors.textPri, fontSize: 14, fontWeight: "600" },
+    fundName: { color: colors.textPri, fontSize: 14, fontWeight: "600" },
+    fundBasis: { color: colors.azure, fontSize: 11.5, fontWeight: "600", marginTop: 3 },
     allocInput: {
       width: 56, textAlign: "center", backgroundColor: colors.bgElev,
       borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm,

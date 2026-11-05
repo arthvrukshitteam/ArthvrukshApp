@@ -227,7 +227,12 @@ async def _refresh_all_lumpsum(db, concurrency: int = 4) -> Dict[str, Any]:
                     # signals combine.
                     predecessor_used = loaded.get("predecessor_used") or []
                     manual_event     = continuity_events.get(int(code))
-                    lineage_doc      = lineage_docs.get(int(code))
+                    own_nav          = loaded.get("original_nav") or []
+                    lineage_doc      = continuity_floor.lineage_or_curated(
+                        lineage_docs.get(int(code)),
+                        (loaded.get("meta") or {}).get("fund_house"),
+                        own_nav[0]["date"].isoformat() if own_nav else None,
+                    )
 
                     horizons_continuity_payload: Optional[list] = None
                     continuity_reset_date: Optional[str] = None

@@ -110,3 +110,8 @@ export function formatDataAge(
   else text = `${label} ${Math.round(hours / 24)}d ago`;
   return { text, stale };
 }
+
+/** "1 fund", "2 funds", "0 funds" — count with correct singular/plural. */
+export function countLabel(n: number, singular: string, plural = `${singular}s`): string {
+  return `${n} ${n === 1 ? singular : plural}`;
+}

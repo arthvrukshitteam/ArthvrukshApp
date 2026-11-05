@@ -32,6 +32,7 @@ import { useTheme } from "@/src/ThemeProvider";
 import { radii, space, type ThemeColors, type ThemeType } from "@/src/theme";
 import { formatPercent, formatMultiple } from "@/src/utils/format";
 import { FundSearchModal, type PickedFund } from "@/src/components/FundSearchModal";
+import { DrawerMenuButton } from "@/src/components/DrawerMenuButton";
 
 const WINDOW_CHIPS = [1, 2, 3, 5, 7, 10, 15, 20, 25, 30];
 const SPLIT_CHIPS = [2, 3, 4, 5];
@@ -302,10 +303,11 @@ export default function RollingAnalysisScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["bottom"]}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={{ padding: space.md, paddingBottom: space.xl * 2 }} keyboardShouldPersistTaps="handled">
           <View style={styles.headerRow}>
+            <DrawerMenuButton />
             <Repeat size={20} color={colors.azure} />
             <Text style={styles.title}>Rolling Analysis</Text>
           </View>

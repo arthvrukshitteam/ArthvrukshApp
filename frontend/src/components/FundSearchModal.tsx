@@ -54,39 +54,68 @@ export function FundSearchModal({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchRow[]>([]);
   const [searching, setSearching] = useState(false);
+  const [browse, setBrowse] = useState<SearchRow[]>([]);
+  const [browseDone, setBrowseDone] = useState(false);
+  const browseLoading = visible && !browseDone;
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seq = useRef(0);
 
   useEffect(() => {
     if (!visible) { setQuery(""); setResults([]); }
   }, [visible]);
 
-  // Same 280 ms debounce / 2-character minimum the Funds tab uses.
+  // Funds are listed the moment the picker opens — the advisor shouldn't
+  // have to guess a name before seeing anything. Only active regular-plan
+  // funds, same rule as activeOnly search below.
+  useEffect(() => {
+    if (!visible || browseDone) return;
+    let alive = true;
+    api.browseFunds({ limit: 60 })
+      .then((r) => { if (alive) setBrowse(r.results); })
+      .catch(() => {})
+      .finally(() => { if (alive) setBrowseDone(true); });
+    return () => { alive = false; };
+  }, [visible, browseDone]);
+
+  // Same 280 ms debounce / 2-character minimum the Fund Search screen uses.
   useEffect(() => {
     if (debounce.current) clearTimeout(debounce.current);
     const q = query.trim();
     if (q.length < 2) { setResults([]); setSearching(false); return; }
     setSearching(true);
+    const mine = ++seq.current;
     debounce.current = setTimeout(async () => {
       // activeOnly: this picker adds a fund to a portfolio the client will
       // actually invest in, so wound-up and merged schemes must not be
-      // offered here. The Funds tab's own search leaves them in (labelled),
-      // because looking one up is a legitimate thing to do.
-      try { setResults(((await api.search(q, { activeOnly: true })) as any).results ?? []); }
-      catch { setResults([]); }
-      finally { setSearching(false); }
+      // offered here. Fund Search leaves them in (labelled), because looking
+      // one up is a legitimate thing to do.
+      try {
+        const r = ((await api.search(q, { activeOnly: true })) as any).results ?? [];
+        if (mine === seq.current) setResults(r);
+      } catch {
+        if (mine === seq.current) setResults([]);
+      } finally {
+        if (mine === seq.current) setSearching(false);
+      }
     }, 280);
     return () => { if (debounce.current) clearTimeout(debounce.current); };
   }, [query]);
 
+  const typed = query.trim().length >= 2;
+  const rows = typed ? results : browse;
+
   const excluded = new Set(excludeCodes);
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={s.backdrop}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={s.sheet}
-        >
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose} statusBarTranslucent>
+      {/* The avoiding view wraps the whole backdrop, not just the sheet: on
+          Android a Modal does not get the window's adjustResize, so without
+          "height" here the keyboard covered the results under the input. */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={s.backdrop}
+      >
+        <View style={s.sheet}>
           <View style={s.handle} />
           <View style={s.header}>
             <Text style={s.title}>{title}</Text>
@@ -105,7 +134,6 @@ export function FundSearchModal({
               onChangeText={setQuery}
               autoCorrect={false}
               autoCapitalize="none"
-              autoFocus
               returnKeyType="search"
             />
             {query.length > 0 && (
@@ -115,21 +143,26 @@ export function FundSearchModal({
             )}
           </View>
 
-          {searching ? (
+          {!typed && (
+            <Text style={s.listLabel}>
+              {browseLoading ? "Loading funds…" : "Top-rated funds · type 2+ letters to search all schemes"}
+            </Text>
+          )}
+
+          {(typed ? searching : browseLoading && !browse.length) ? (
             <View style={s.centre}><ActivityIndicator color={colors.azure} /></View>
-          ) : query.trim().length < 2 ? (
+          ) : rows.length === 0 ? (
             <View style={s.centre}>
-              <Text style={s.hint}>Type at least 2 characters to search.</Text>
-            </View>
-          ) : results.length === 0 ? (
-            <View style={s.centre}>
-              <Text style={s.hint}>No matching schemes. Try fewer keywords.</Text>
+              <Text style={s.hint}>
+                {typed ? "No matching schemes. Try fewer keywords." : "Type a fund name to search."}
+              </Text>
             </View>
           ) : (
             <FlatList
-              data={results}
+              data={rows}
               keyExtractor={(it) => String(it.scheme_code)}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               contentContainerStyle={{ paddingBottom: space.xl }}
               renderItem={({ item }) => {
                 const already = excluded.has(item.scheme_code);
@@ -159,8 +192,8 @@ export function FundSearchModal({
               }}
             />
           )}
-        </KeyboardAvoidingView>
-      </View>
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -193,6 +226,7 @@ function makeStyles(colors: ThemeColors) {
     input: { flex: 1, color: colors.textPri, fontSize: 15, padding: 0 },
     centre: { flex: 1, alignItems: "center", justifyContent: "center", padding: space.xl },
     hint: { color: colors.textTer, fontSize: 13, textAlign: "center" },
+    listLabel: { color: colors.textTer, fontSize: 11.5, fontWeight: "600", marginBottom: 4, marginLeft: 2 },
     row: {
       flexDirection: "row", alignItems: "center", gap: space.md,
       paddingVertical: space.md, paddingHorizontal: space.sm,

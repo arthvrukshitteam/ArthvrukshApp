@@ -193,10 +193,18 @@ export default function ProposalReviewScreen() {
     if (e) { Alert.alert("Can't recalculate", e); return; }
     setRecalculating(true);
     try {
-      const fundInputs: ProposalFundInput[] = state.funds.map((f) => ({
-        scheme_code: f.scheme_code,
-        allocation_pct: (parseFloat(state.allocations[f.scheme_code]) || 0) / 100,
-      }));
+      const fundInputs: ProposalFundInput[] = state.funds.map((f) => {
+        // Keep each fund's original start-date basis across recalculation;
+        // a fund added here (no entry) is scored on the default basis.
+        const basis = doc.fund_bases?.[String(f.scheme_code)];
+        return {
+          scheme_code: f.scheme_code,
+          allocation_pct: (parseFloat(state.allocations[f.scheme_code]) || 0) / 100,
+          ...(basis
+            ? { start_date: basis.start_date, include_predecessor: basis.include_predecessor, explicit_basis: !!basis.explicit_basis }
+            : {}),
+        };
+      });
       const res = await api.buildProposal({
         proposal_id: id, // recompute this same proposal — do NOT mint a new one
         client_name: state.clientName.trim() || undefined,
@@ -205,7 +213,7 @@ export default function ProposalReviewScreen() {
         mode: doc.mode,
         horizon: doc.horizon,
         // Echo the ORIGINAL build's toggle state, not a reset to false — a
-        // recalculation must keep using the same 2010/Mgmt data variant the
+        // recalculation must keep using the same 2010/Management data variant the
         // proposal was built with, or every edit here would silently
         // revert the whole proposal to plain since-inception numbers.
         since_2010: doc.since_2010 ?? false,

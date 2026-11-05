@@ -34,6 +34,7 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -59,10 +60,13 @@ import {
 } from "lucide-react-native";
 import {
   api,
+  invalidateApiCache,
   type EligibleFund,
   type UniverseResponse,
   type BonusFund,
+  type AmcBreak,
 } from "@/src/api";
+import { amcPeriodLabel } from "@/src/components/FundDetailShared";
 import { useTheme } from "@/src/ThemeProvider";
 import { useMode } from "@/src/ModeProvider";
 import { useTenure } from "@/src/TenureProvider";
@@ -113,6 +117,114 @@ function fmtSince(dateStr: string | null | undefined): string | null {
   if (isNaN(d.getTime())) return null;
   return `since ${d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}`;
 }
+
+// ── AMC period choice (Management toggle on) ─────────────────────────────────
+//
+// A fund whose fund house changed hands (several times, for some) can be
+// judged from any of those changes: e.g. 2018–2026, 2016–2026 or 2010–2026.
+// The nightly batch only precomputes the latest break, so picking another
+// period recomputes THAT card live from the fund's NAV history starting at
+// that date — real recalculation, not a relabel — via the same analyze
+// endpoint Fund Detail uses for its start-date filter.
+
+const FULL_HISTORY = "full";
+
+type PeriodOption = { value: string; label: string };
+
+/** The subset of a card's numbers that a period recompute replaces. */
+type CardStats = {
+  blended_wm: number | null;
+  fqs: number | null;
+  fqs_tier: string | null;
+  success_pct: number | null;
+  n_windows: number | null;
+  cv: number | null;
+  p10_wm: number | null;
+};
+
+type PeriodCalc = { loading: boolean; stats: CardStats | null; error: string | null; noData: boolean };
+
+function tierFor(fqs: number | null | undefined): string | null {
+  if (fqs == null) return null;
+  if (fqs >= 90) return "Elite";
+  if (fqs >= 80) return "Strong";
+  if (fqs >= 70) return "Good";
+  if (fqs >= 60) return "Average";
+  return "Weak";
+}
+
+/** Newest break first, then the fund's server-default break if it isn't one
+ *  of them, then full history. Null when there's no choice to offer. */
+function periodOptionsFor(
+  breaks: AmcBreak[] | null | undefined,
+  continuityDate: string | null | undefined,
+): PeriodOption[] | null {
+  const dates = (breaks ?? []).map((b) => b.date);
+  if (continuityDate && !dates.includes(continuityDate)) dates.unshift(continuityDate);
+  if (!dates.length) return null;
+  const uniq = [...new Set(dates)].sort().reverse();
+  return [
+    ...uniq.map((d) => ({ value: d, label: amcPeriodLabel(d) })),
+    { value: FULL_HISTORY, label: "All years" },
+  ];
+}
+
+function PeriodPicker({
+  options, active, onSelect, busy, note, colors,
+}: {
+  options: PeriodOption[];
+  active: string;
+  onSelect: (value: string) => void;
+  busy: boolean;
+  note: string | null;
+  colors: ThemeColors;
+}) {
+  return (
+    <View style={periodS.wrap}>
+      <View style={periodS.head}>
+        <GitBranch size={11} color={colors.textTer} />
+        <Text style={[periodS.title, { color: colors.textTer }]}>MANAGEMENT PERIOD</Text>
+        {busy && <ActivityIndicator size="small" color={colors.azure} style={{ marginLeft: 4 }} />}
+      </View>
+      <View style={periodS.row}>
+        {options.map((o) => {
+          const on = o.value === active;
+          return (
+            <Pressable
+              key={o.value}
+              onPress={() => onSelect(o.value)}
+              hitSlop={4}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={o.value === FULL_HISTORY ? "Score on all years" : `Score from ${o.value}`}
+              style={({ pressed }) => [
+                periodS.chip,
+                {
+                  borderColor: on ? colors.azure : colors.border,
+                  backgroundColor: on ? colors.azureSoft : colors.bgElev,
+                  opacity: pressed ? 0.75 : 1,
+                },
+              ]}
+            >
+              <Text style={[periodS.chipText, { color: on ? colors.azure : colors.textSec }]}>{o.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {note ? <Text style={[periodS.note, { color: colors.amber }]}>{note}</Text> : null}
+    </View>
+  );
+}
+
+const periodS = StyleSheet.create({
+  wrap: { marginBottom: 12, gap: 6 },
+  head: { flexDirection: "row", alignItems: "center", gap: 5 },
+  title: { fontSize: 9.5, fontWeight: "800", letterSpacing: 0.8 },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  chip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radii.pill, borderWidth: 1.2 },
+  chipText: { fontSize: 11.5, fontWeight: "700", fontVariant: ["tabular-nums"] },
+  note: { fontSize: 11, fontWeight: "600", lineHeight: 15 },
+});
 
 // ── Skeleton loading card ─────────────────────────────────────────────────────
 
@@ -436,7 +548,17 @@ function FundCard({
   selected = false,
   continuitySince = null,
   continuityReason = null,
+  periodOptions = null,
+  activePeriod = FULL_HISTORY,
+  onSelectPeriod,
+  periodBusy = false,
+  periodNote = null,
 }: {
+  periodOptions?: PeriodOption[] | null;
+  activePeriod?: string;
+  onSelectPeriod?: (value: string) => void;
+  periodBusy?: boolean;
+  periodNote?: string | null;
   rank: number;
   name: string;
   category?: string;
@@ -561,11 +683,22 @@ function FundCard({
           ) : null}
         </View>
 
+        {periodOptions && onSelectPeriod && !selectionMode ? (
+          <PeriodPicker
+            options={periodOptions}
+            active={activePeriod}
+            onSelect={onSelectPeriod}
+            busy={periodBusy}
+            note={periodNote}
+            colors={colors}
+          />
+        ) : null}
+
         {/* ── Divider ── */}
         <View style={[cardS.divider, { backgroundColor: colors.border }]} />
 
         {/* ── Primary metrics row: Blended WM | FQS | Success % ── */}
-        <View style={cardS.metricsRow}>
+        <View style={[cardS.metricsRow, periodBusy && { opacity: 0.45 }]}>
           <MetricCell
             value={blendedWm != null ? `${blendedWm.toFixed(2)}×` : "—"}
             subValue={fmtXirr(blendedXirr)}
@@ -590,7 +723,7 @@ function FundCard({
         </View>
 
         {/* ── Secondary metrics row: Windows | P10 WM | CV ── */}
-        <View style={[cardS.metricsRow, { marginTop: 8 }]}>
+        <View style={[cardS.metricsRow, { marginTop: 8 }, periodBusy && { opacity: 0.45 }]}>
           <MetricCell
             value={nWindows != null ? String(nWindows) : "—"}
             label="Windows"
@@ -633,6 +766,14 @@ function FundCard({
             <Text style={[cardS.bmStripText, { color: "#F59E0B" }]}>
               {`History scored ${fmtSince(continuitySince)}`}
               {continuityReason ? ` — ${continuityReason}` : " — management change"}
+            </Text>
+          </View>
+        ) : null}
+        {periodOptions && activePeriod === FULL_HISTORY && !selectionMode ? (
+          <View style={[cardS.bmStrip, { borderTopColor: colors.border }]}>
+            <GitBranch size={11} color={colors.textTer} />
+            <Text style={[cardS.bmStripText, { color: colors.textTer }]}>
+              Scored on all years — includes every management this fund has had.
             </Text>
           </View>
         ) : null}
@@ -690,7 +831,7 @@ function MetricCell({
       >
         {value}
       </Text>
-      {subValue ? (
+      {subValue && subValue !== "—" ? (
         <Text style={[cardS.metricSub, { color: colors.textTer }]}>
           {subValue} p.a.
         </Text>
@@ -861,12 +1002,17 @@ function BonusFundCard({
   colors,
   selectionMode = false,
   selected = false,
+  period = null,
 }: {
   fund: BonusFund;
   onPress: () => void;
   colors: ThemeColors;
   selectionMode?: boolean;
   selected?: boolean;
+  period?: {
+    options: PeriodOption[]; active: string; busy: boolean; note: string | null;
+    onSelect: (v: string) => void;
+  } | null;
 }) {
   // Both modes deliver these under the same names (UniverseMetrics), so there
   // is no per-mode field selection here — only the engine that produced them
@@ -945,6 +1091,17 @@ function BonusFundCard({
             <ContinuityTag since={fund.continuity_reset_date} reason={fund.continuity_reason} colors={colors} />
           ) : null}
         </View>
+
+        {period && !selectionMode ? (
+          <PeriodPicker
+            options={period.options}
+            active={period.active}
+            onSelect={period.onSelect}
+            busy={period.busy}
+            note={period.note}
+            colors={colors}
+          />
+        ) : null}
 
         {/* Disclaimer strip */}
         <View
@@ -1429,7 +1586,7 @@ function HomeHeader({
         >
           <GitBranch size={12} color={separateManagement ? colors.azure : colors.textSec} />
           <Text style={[headerS.since2010BtnText, { color: separateManagement ? colors.azure : colors.textSec }]}>
-            Mgmt
+            Management
           </Text>
         </Pressable>
 
@@ -1528,8 +1685,10 @@ function SortStrip({
   sortLabel,
   colors,
   since2010 = false,
+  separateManagement = false,
   scoresLastRefreshed,
 }: {
+  separateManagement?: boolean;
   count: number;
   minHistory: number;
   sortLabel: string;
@@ -1572,6 +1731,15 @@ function SortStrip({
           <History size={11} color={colors.azure} />
           <Text style={[stripS.noticeText, { color: colors.azure }]}>
             Showing every fund&apos;s history from 2010-01-01 onward (or its own inception, if later) — not since inception.
+          </Text>
+        </View>
+      )}
+      {separateManagement && (
+        <View style={[stripS.noticeRow, { backgroundColor: colors.azureSoft }]}>
+          <GitBranch size={11} color={colors.azure} />
+          <Text style={[stripS.noticeText, { color: colors.azure }]}>
+            Funds whose AMC changed are scored from their latest change. Where a fund changed hands more
+            than once, pick a different starting period on its card to recalculate it.
           </Text>
         </View>
       )}
@@ -1788,17 +1956,29 @@ function UniverseScreen({ mode }: { mode: "sip" | "lumpsum" }) {
   // stitched history. See api.universe / backend/server.py home_universe &
   // lumpsum_universe / _continuity_applies.
   const [separateManagement, setSeparateManagement] = useState(false);
+  // Per-card AMC period override (scheme_code → ISO start date or
+  // FULL_HISTORY) and its live recomputation. Absent = the server default.
+  const [periodChoice, setPeriodChoice] = useState<Record<number, string>>({});
+  const [periodCalc, setPeriodCalc] = useState<Record<number, PeriodCalc>>({});
+  const periodReq = useRef<Record<number, number>>({});
 
   const load = useCallback(async (silent = false) => {
     if (!tenure) return;
     if (!silent) setLoading(true);
     setError(null);
     try {
+      if (silent) invalidateApiCache("/home/universe");
+      if (silent) invalidateApiCache("/lumpsum/universe");
       const r = await api.universe(mode, tenure, since2010, separateManagement);
       setResult(r);
       setBroadFilter(null);
       setSubFilter(null);
       setBonusCollapsed(false);
+      // A new universe (tenure/mode/toggle change) means new card numbers;
+      // per-card overrides computed for the old one no longer apply.
+      setPeriodChoice({});
+      setPeriodCalc({});
+      periodReq.current = {};
     } catch (e: any) {
       // The SIP universe returns 503 until the nav-meta index has been built.
       setError(
@@ -1819,21 +1999,128 @@ function UniverseScreen({ mode }: { mode: "sip" | "lumpsum" }) {
   const calcHorizon = result?.resolved_horizon ?? tenure ?? 10;
 
   // Fund Detail must show the SAME basis as the card the user just tapped —
-  // otherwise the 2010/Mgmt toggles here silently stop applying the moment
+  // otherwise the 2010/Management toggles here silently stop applying the moment
   // you drill in, and FQS/XIRR/Success% can differ with no indication why.
-  // `continuityResetDate` is only non-null on a fund when the Mgmt toggle is
+  // `continuityResetDate` is only non-null on a fund when the Management toggle is
   // actually in effect for it (server.py only echoes it back when `applied`
   // is true), so its presence alone tells Fund Detail which basis to load.
   const fundDetailHref = useCallback(
     (schemeCode: number, horizon: number, continuityResetDate?: string | null) => {
       const params = new URLSearchParams();
       params.set("horizon", String(horizon));
-      if (since2010) params.set("since2010", "1");
-      if (separateManagement) params.set("mgmt", "1");
-      if (continuityResetDate) params.set("contDate", continuityResetDate);
+      const choice = periodChoice[schemeCode];
+      if (choice && choice !== FULL_HISTORY) {
+        // The card's chosen AMC period travels with it so Fund Detail opens
+        // on the same history the card was scored on.
+        params.set("amcStart", choice);
+      } else if (choice === FULL_HISTORY) {
+        if (since2010) params.set("since2010", "1");
+      } else {
+        if (since2010) params.set("since2010", "1");
+        if (separateManagement) params.set("mgmt", "1");
+        if (continuityResetDate) params.set("contDate", continuityResetDate);
+      }
       return `/fund/${schemeCode}?${params.toString()}`;
     },
-    [since2010, separateManagement],
+    [since2010, separateManagement, periodChoice],
+  );
+
+  /** Pick (or reset) a card's AMC period and recompute its numbers from
+   *  that date at `horizon` (the tenure, or a bonus fund's best_horizon). */
+  const selectPeriod = useCallback(
+    async (schemeCode: number, horizon: number, value: string, serverDefault: string) => {
+      if (value === serverDefault) {
+        periodReq.current[schemeCode] = (periodReq.current[schemeCode] ?? 0) + 1;
+        setPeriodChoice((p) => { const n = { ...p }; delete n[schemeCode]; return n; });
+        setPeriodCalc((p) => { const n = { ...p }; delete n[schemeCode]; return n; });
+        return;
+      }
+      const req = (periodReq.current[schemeCode] ?? 0) + 1;
+      periodReq.current[schemeCode] = req;
+      setPeriodChoice((p) => ({ ...p, [schemeCode]: value }));
+      setPeriodCalc((p) => ({
+        ...p,
+        [schemeCode]: { loading: true, stats: p[schemeCode]?.stats ?? null, error: null, noData: false },
+      }));
+      try {
+        const opts = {
+          startDate: value === FULL_HISTORY ? undefined : value,
+          includePredecessor: true,
+          summary: true,
+        };
+        const d = mode === "lumpsum"
+          ? await api.analyzeLumpsum(schemeCode, opts)
+          : await api.analyze(schemeCode, opts);
+        if (periodReq.current[schemeCode] !== req) return;
+        const h = (d.horizons as any[]).find((x) => x.horizon === horizon);
+        const stats: CardStats | null = h
+          ? {
+              blended_wm: h.blended_wm ?? null,
+              fqs: h.fqs ?? null,
+              fqs_tier: tierFor(h.fqs),
+              success_pct: h.success_pct ?? null,
+              n_windows: h.n_windows ?? null,
+              cv: h.cv ?? null,
+              p10_wm: h.p10_wm ?? null,
+            }
+          : null;
+        setPeriodCalc((p) => ({ ...p, [schemeCode]: { loading: false, stats, error: null, noData: !h } }));
+      } catch (e: any) {
+        if (periodReq.current[schemeCode] !== req) return;
+        setPeriodCalc((p) => ({
+          ...p,
+          [schemeCode]: { loading: false, stats: null, error: String(e?.message ?? e), noData: false },
+        }));
+      }
+    },
+    [mode],
+  );
+
+  /** Card-ready numbers + picker props for one fund. */
+  const periodView = useCallback(
+    (f: { scheme_code: number; amc_breaks?: AmcBreak[] | null; continuity_reset_date?: string | null }, horizon: number) => {
+      if (!separateManagement) return null;
+      const options = periodOptionsFor(f.amc_breaks, f.continuity_reset_date);
+      if (!options) return null;
+      const serverDefault = f.continuity_reset_date ?? FULL_HISTORY;
+      const active = periodChoice[f.scheme_code] ?? serverDefault;
+      const calc = periodChoice[f.scheme_code] ? periodCalc[f.scheme_code] : undefined;
+      const year = active === FULL_HISTORY ? null : active.slice(0, 4);
+      const note = calc?.error
+        ? "Couldn't recalculate this period — showing the previous numbers. Tap again to retry."
+        : calc?.noData
+          ? `Not enough history from ${year} for a ${horizon}Y rolling window.`
+          : null;
+      // undefined = show the server's numbers; null = this period has no
+      // window at this horizon (card shows dashes); otherwise the recompute.
+      let display: CardStats | null | undefined;
+      if (!calc || calc.error) display = undefined;
+      else if (calc.loading) display = calc.stats ?? undefined;
+      else display = calc.stats;
+      return {
+        options,
+        active,
+        busy: !!calc?.loading,
+        note,
+        display,
+        onSelect: (v: string) => selectPeriod(f.scheme_code, horizon, v, serverDefault),
+      };
+    },
+    [separateManagement, periodChoice, periodCalc, selectPeriod],
+  );
+
+  /** Proposal basis for a fund whose card has an AMC period chosen. */
+  const draftBasis = useCallback(
+    (schemeCode: number) => {
+      const choice = periodChoice[schemeCode];
+      if (!choice) return {};
+      return {
+        start_date: choice === FULL_HISTORY ? null : choice,
+        include_predecessor: true,
+        explicit_basis: true,
+      };
+    },
+    [periodChoice],
   );
 
   const displayFunds = useMemo(() => {
@@ -1981,6 +2268,7 @@ function UniverseScreen({ mode }: { mode: "sip" | "lumpsum" }) {
                 sortLabel={sortLabel}
                 colors={colors}
                 since2010={since2010}
+                separateManagement={separateManagement}
                 scoresLastRefreshed={result.scores_last_refreshed}
               />
               <TwoLevelFilter
@@ -2004,52 +2292,95 @@ function UniverseScreen({ mode }: { mode: "sip" | "lumpsum" }) {
                     onToggle={() => setBonusCollapsed((v) => !v)}
                     colors={colors}
                   />
-                  {!bonusCollapsed && searchedBonus.map((bf) => (
-                    <BonusFundCard
-                      key={bf.scheme_code}
-                      fund={bf}
-                      onPress={() =>
-                        selectionMode
-                          ? toggleFund({ scheme_code: bf.scheme_code, scheme_name: bf.scheme_name })
-                          : router.push(fundDetailHref(bf.scheme_code, bf.best_horizon, bf.continuity_reset_date) as any)
-                      }
-                      colors={colors}
-                      selectionMode={selectionMode}
-                      selected={isSelected(bf.scheme_code)}
-                    />
-                  ))}
+                  {!bonusCollapsed && searchedBonus.map((bf) => {
+                    const pv = periodView(bf, bf.best_horizon);
+                    const choice = periodChoice[bf.scheme_code];
+                    const toXirr = mode === "sip" ? sipWmToXirr : lumpsumWmToXirr;
+                    const fund: BonusFund = pv?.display === undefined || !pv
+                      ? bf
+                      : {
+                          ...bf,
+                          ...(pv.display ?? {
+                            blended_wm: null, fqs: null, fqs_tier: null, success_pct: null,
+                            n_windows: null, cv: null, p10_wm: null,
+                          }),
+                          blended_xirr: pv.display?.blended_wm != null ? toXirr(pv.display.blended_wm, bf.best_horizon) : null,
+                          p10_xirr: pv.display?.p10_wm != null ? toXirr(pv.display.p10_wm, bf.best_horizon) : null,
+                          continuity_reset_date: choice && choice !== FULL_HISTORY ? choice : null,
+                        };
+                    return (
+                      <BonusFundCard
+                        key={bf.scheme_code}
+                        fund={fund}
+                        onPress={() =>
+                          selectionMode
+                            ? toggleFund({
+                                scheme_code: bf.scheme_code, scheme_name: bf.scheme_name,
+                                ...draftBasis(bf.scheme_code),
+                              })
+                            : router.push(fundDetailHref(bf.scheme_code, bf.best_horizon, bf.continuity_reset_date) as any)
+                        }
+                        colors={colors}
+                        selectionMode={selectionMode}
+                        selected={isSelected(bf.scheme_code)}
+                        period={pv}
+                      />
+                    );
+                  })}
                   {!bonusCollapsed && <View style={{ height: 6 }} />}
                 </>
               )}
             </>
           }
-          renderItem={({ item, index }) => (
-            <FundCard
-              rank={index + 1}
-              name={item.scheme_name}
-              category={item.amfi_sub ?? item.category}
-              blendedWm={item.blended_wm}
-              fqs={item.fqs}
-              fqsTier={item.fqs_tier}
-              successPct={item.success_pct}
-              nWindows={item.n_windows}
-              cv={item.cv}
-              p10Wm={item.p10_wm}
-              mode={mode}
-              horizon={calcHorizon}
-              onPress={() =>
-                selectionMode
-                  ? toggleFund({ scheme_code: item.scheme_code, scheme_name: item.scheme_name })
-                  : router.push(fundDetailHref(item.scheme_code, calcHorizon, item.continuity_reset_date) as any)
-              }
-              colors={colors}
-              overrideMinWm={customMinWm}
-              selectionMode={selectionMode}
-              selected={isSelected(item.scheme_code)}
-              continuitySince={item.continuity_reset_date}
-              continuityReason={item.continuity_reason}
-            />
-          )}
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={9}
+          renderItem={({ item, index }) => {
+            const pv = periodView(item, calcHorizon);
+            const s: CardStats | EligibleFund = pv?.display !== undefined && pv?.display !== null
+              ? pv.display
+              : item;
+            const dashes = pv?.display === null;
+            const choice = periodChoice[item.scheme_code];
+            const since = choice
+              ? (choice === FULL_HISTORY ? null : choice)
+              : item.continuity_reset_date;
+            return (
+              <FundCard
+                rank={index + 1}
+                name={item.scheme_name}
+                category={item.amfi_sub ?? item.category}
+                blendedWm={dashes ? null : s.blended_wm}
+                fqs={dashes ? null : s.fqs}
+                fqsTier={dashes ? null : s.fqs_tier}
+                successPct={dashes ? null : s.success_pct}
+                nWindows={dashes ? null : s.n_windows}
+                cv={dashes ? null : s.cv}
+                p10Wm={dashes ? null : s.p10_wm}
+                mode={mode}
+                horizon={calcHorizon}
+                onPress={() =>
+                  selectionMode
+                    ? toggleFund({
+                        scheme_code: item.scheme_code, scheme_name: item.scheme_name,
+                        ...draftBasis(item.scheme_code),
+                      })
+                    : router.push(fundDetailHref(item.scheme_code, calcHorizon, item.continuity_reset_date) as any)
+                }
+                colors={colors}
+                overrideMinWm={customMinWm}
+                selectionMode={selectionMode}
+                selected={isSelected(item.scheme_code)}
+                continuitySince={since}
+                continuityReason={choice ? "AMC period you selected" : item.continuity_reason}
+                periodOptions={pv?.options ?? null}
+                activePeriod={pv?.active}
+                onSelectPeriod={pv?.onSelect}
+                periodBusy={pv?.busy ?? false}
+                periodNote={pv?.note ?? null}
+              />
+            );
+          }}
           ListEmptyComponent={
             <EmptyState
               msg={

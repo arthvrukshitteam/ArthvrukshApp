@@ -194,6 +194,27 @@ def compute_overlap(
 
     common.sort(key=lambda r: r["contribution"], reverse=True)
 
+    def _unique(by_key: Dict[str, Dict[str, Any]], rebased: Dict[str, float]) -> List[Dict[str, Any]]:
+        rows = [
+            {
+                "name":          h["name"],
+                "isin":          h["isin"],
+                "weight":        round(h["weight_pct"], 4),
+                "weight_equity": round(rebased[key], 4),
+            }
+            for key, h in by_key.items() if key not in common_keys
+        ]
+        rows.sort(key=lambda r: r["weight"], reverse=True)
+        return rows
+
+    # How much of EACH fund sits in the shared stocks. Unlike the symmetric
+    # headline these differ by fund: a concentrated fund can be 70% inside
+    # the overlap while a diversified one is only 35% inside it.
+    common_weight_a = sum(by_key_a[k]["weight_pct"] for k in common_keys)
+    common_weight_b = sum(by_key_b[k]["weight_pct"] for k in common_keys)
+    common_weight_a_eq = sum(wa[k] for k in common_keys)
+    common_weight_b_eq = sum(wb[k] for k in common_keys)
+
     # Jaccard on names, reported alongside the weighted figure purely as
     # context — it is NOT the headline metric (see module docstring).
     union = len(set(by_key_a) | set(by_key_b))
@@ -210,4 +231,10 @@ def compute_overlap(
         "only_in_a":         len(by_key_a) - len(common_keys),
         "only_in_b":         len(by_key_b) - len(common_keys),
         "common":            common,
+        "unique_a":          _unique(by_key_a, wa),
+        "unique_b":          _unique(by_key_b, wb),
+        "common_weight_a":         round(common_weight_a, 2),
+        "common_weight_b":         round(common_weight_b, 2),
+        "common_weight_a_equity":  round(min(common_weight_a_eq, 100.0), 2),
+        "common_weight_b_equity":  round(min(common_weight_b_eq, 100.0), 2),
     }

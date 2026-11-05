@@ -7,16 +7,16 @@
  * The active indicator is a short pill (32px wide, 3px tall) sitting at the
  * very top edge of the tab bar — a common premium pattern seen in top-tier apps.
  *
- * Five slots is the practical ceiling before labels truncate. Methodology used
- * to hold the fifth; it is reference material rather than day-to-day work, so
- * it moved to the drawer (see ../_layout.tsx) and Portfolio Overlap took the
- * slot. Adding a sixth tab here means taking one away.
+ * Four slots. Methodology and Fund Search live in the drawer (see
+ * ../_layout.tsx): Methodology is reference material, and Fund Search is a
+ * lookup tool reached from the menu rather than a place the advisor tabs
+ * between while working. Five is the ceiling before labels truncate.
  */
 
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { Tabs, useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { HomeIcon, Search, Repeat, ListChecks, Layers } from "lucide-react-native";
+import { HomeIcon, Repeat, ListChecks, Layers } from "lucide-react-native";
 import { useTheme } from "@/src/ThemeProvider";
 import { space, radii } from "@/src/theme";
 
@@ -30,7 +30,6 @@ type TabDef = {
 
 const TABS: TabDef[] = [
   { name: "home",             label: "Home",        Icon: HomeIcon    },
-  { name: "index",            label: "Funds",       Icon: Search      },
   { name: "rolling",          label: "Rolling",     Icon: Repeat      },
   { name: "portfolio-review", label: "Review",      Icon: ListChecks  },
   { name: "overlap",          label: "Overlap",     Icon: Layers      },
@@ -178,14 +177,6 @@ export default function TabsLayout() {
           title:         "Home",
           headerShown:   false,
           tabBarIcon:    ({ color, size }) => <HomeIcon color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="index"
-        options={{
-          title:         "Funds",
-          headerShown:   false,
-          tabBarIcon:    ({ color, size }) => <Search color={color} size={size} />,
         }}
       />
       <Tabs.Screen
